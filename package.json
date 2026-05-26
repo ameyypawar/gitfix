@@ -2,7 +2,7 @@
   "name": "gitfix",
   "displayName": "gitfix — Merge Conflict Inspector",
   "description": "Workspace-wide merge conflict inspector and companion to VS Code's built-in merge editor. Powered by gfix MCP.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "ameyypawar",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -15,7 +15,7 @@
     "url": "https://github.com/ameyypawar/gitfix/issues"
   },
   "engines": {
-    "vscode": "^1.85.0",
+    "vscode": "^1.92.0",
     "node": ">=18"
   },
   "categories": ["SCM Providers", "Other"],
@@ -84,9 +84,44 @@
         "category": "gitfix"
       },
       {
+        "command": "gitfix.resolveTakeTarget",
+        "title": "Resolve: Take Target Unchanged",
+        "icon": "$(circle-slash)",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.resolveBatchMergiraf",
+        "title": "Resolve Selected with Mergiraf",
+        "icon": "$(wand)",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.applyMerge",
+        "title": "Apply Merge",
+        "icon": "$(check-all)",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.abortMerge",
+        "title": "Abort Merge",
+        "icon": "$(close)",
+        "category": "gitfix"
+      },
+      {
         "command": "gitfix.showAuditRef",
         "title": "Show Audit Ref",
         "icon": "$(history)",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.configureAiProvider",
+        "title": "Configure AI Provider",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.resolveAi",
+        "title": "Resolve: With AI Suggestion",
+        "icon": "$(sparkle)",
         "category": "gitfix"
       }
     ],
@@ -96,6 +131,16 @@
           "command": "gitfix.refresh",
           "when": "view == gitfix.conflicts",
           "group": "navigation"
+        },
+        {
+          "command": "gitfix.applyMerge",
+          "when": "view == gitfix.conflicts && gitfix:hasMerge",
+          "group": "navigation@2"
+        },
+        {
+          "command": "gitfix.abortMerge",
+          "when": "view == gitfix.conflicts && gitfix:hasMerge",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -120,6 +165,16 @@
           "group": "resolve@3"
         },
         {
+          "command": "gitfix.resolveTakeTarget",
+          "when": "view == gitfix.conflicts && viewItem == conflict && gitfix:conflictHasTakeTarget",
+          "group": "resolve@4"
+        },
+        {
+          "command": "gitfix.resolveBatchMergiraf",
+          "when": "view == gitfix.conflicts && viewItem == conflict",
+          "group": "batch@1"
+        },
+        {
           "command": "gitfix.showAuditRef",
           "when": "view == gitfix.conflicts && viewItem == merge",
           "group": "navigation@1"
@@ -128,10 +183,16 @@
       "commandPalette": [
         { "command": "gitfix.refresh" },
         { "command": "gitfix.showAuditRef", "when": "gitfix:hasMerge" },
+        { "command": "gitfix.applyMerge", "when": "gitfix:hasMerge" },
+        { "command": "gitfix.abortMerge", "when": "gitfix:hasMerge" },
+        { "command": "gitfix.configureAiProvider" },
         { "command": "gitfix.openFile", "when": "false" },
         { "command": "gitfix.resolveOurs", "when": "false" },
         { "command": "gitfix.resolveTheirs", "when": "false" },
-        { "command": "gitfix.resolveMergiraf", "when": "false" }
+        { "command": "gitfix.resolveMergiraf", "when": "false" },
+        { "command": "gitfix.resolveTakeTarget", "when": "false" },
+        { "command": "gitfix.resolveBatchMergiraf", "when": "false" },
+        { "command": "gitfix.resolveAi", "when": "false" }
       ]
     },
     "configuration": {
@@ -146,6 +207,22 @@
           "type": "boolean",
           "default": true,
           "description": "Auto-activate the conflict tree when VS Code detects an in-progress merge."
+        },
+        "gitfix.codeLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show inline CodeLens buttons above git conflict markers."
+        },
+        "gitfix.aiProvider": {
+          "type": "string",
+          "enum": ["host", "byok", "none"],
+          "default": "host",
+          "description": "AI suggestion source. 'host' uses VS Code's Language Model API (Copilot, etc.). 'byok' uses keys from ~/.config/gitfix/keys.toml or env. 'none' disables AI."
+        },
+        "gitfix.ai.budgetWarningAt": {
+          "type": "number",
+          "default": 8,
+          "description": "Show a notification when AI suggestion count reaches this number (default budget is 10/merge)."
         }
       }
     }
@@ -158,6 +235,7 @@
     "lint": "eslint src --ext ts",
     "test:compile": "tsc -p ./",
     "test": "node ./out/test/runTest.js",
+    "test:integration": "node ./out/test/runIntegrationTest.js",
     "vsce:package": "vsce package --pre-release",
     "vsce:publish": "vsce publish --pre-release",
     "ovsx:publish": "ovsx publish --pre-release"
@@ -167,7 +245,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.x",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.92.0",
     "@types/mocha": "^10.0.6",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",

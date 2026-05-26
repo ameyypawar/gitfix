@@ -1,11 +1,14 @@
 import * as vscode from 'vscode';
 import { GfixMcpClient } from '../mcp/client';
+import { ConflictTreeProvider } from '../ui/conflict-tree';
 import type { MergeState } from '../git/detect';
 import { log, showOutputChannel } from '../log';
 
 export function registerAuditRefCommand(
   getClient: () => GfixMcpClient | undefined,
+  _tree: ConflictTreeProvider,
   getState: () => MergeState,
+  _context: vscode.ExtensionContext,
 ): vscode.Disposable[] {
   return [
     vscode.commands.registerCommand('gitfix.showAuditRef', async () => {
@@ -21,8 +24,7 @@ export function registerAuditRefCommand(
         vscode.window.showInformationMessage('gitfix: no active merge.');
         return;
       }
-      // Phase 1: just request status and dump to the output channel.
-      // Phase 2 replaces this with a Webview detail panel.
+      // Phase 1 stub retained until Commit 3 replaces with AuditPanel Webview.
       try {
         const status = await client.mergeStatus({
           repo_path: state.repoPath,

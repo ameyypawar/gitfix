@@ -35,6 +35,40 @@ export function registerResolveCommands(
       (item?: ConflictItem) =>
         resolve(getClient, tree, getState, item, { kind: 'mergiraf' }),
     ),
+    vscode.commands.registerCommand(
+      'gitfix.resolveTakeTarget',
+      (item?: ConflictItem) =>
+        resolve(getClient, tree, getState, item, { kind: 'take-target' }),
+    ),
+    vscode.commands.registerCommand(
+      'gitfix.resolveBatchMergiraf',
+      async (_first: ConflictItem | undefined, all?: ConflictItem[]) => {
+        const items = all && all.length > 0 ? all : (_first ? [_first] : []);
+        if (items.length === 0) {
+          vscode.window.showWarningMessage('gitfix: select one or more conflicts.');
+          return;
+        }
+        const client = getClient();
+        const state = getState();
+        if (!client || !state.repoPath || !tree.mergeId) return;
+        try {
+          const result = await client.conflictResolveBatch({
+            repo_path: state.repoPath,
+            merge_id: tree.mergeId,
+            decisions: items.map((it) => ({
+              conflict_id: it.conflict.conflict_id,
+              resolution: { kind: 'mergiraf' },
+            })),
+          });
+          vscode.window.showInformationMessage(
+            `gitfix: resolved ${result.resolved}, failed ${result.failed}, remaining ${result.remaining_unresolved}.`,
+          );
+          await tree.refresh(state.repoPath);
+        } catch (err) {
+          vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      },
+    ),
   ];
 }
 

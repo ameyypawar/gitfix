@@ -111,4 +111,36 @@ export class GfixMcpClient {
     });
     return res.structuredContent as ConflictResolveResponse;
   }
+
+  async mergeApply(args: {
+    repo_path: string;
+    merge_id: string;
+    auto_approve?: boolean;
+  }): Promise<{ merge_id: string; commit_oid: string; audit_ref: string }> {
+    const res = await this.requireClient().callTool({
+      name: 'gitfix_merge_apply',
+      arguments: args,
+    });
+    return res.structuredContent as { merge_id: string; commit_oid: string; audit_ref: string };
+  }
+
+  async mergeAbort(args: { repo_path: string; merge_id: string }): Promise<{ merge_id: string; aborted: boolean }> {
+    const res = await this.requireClient().callTool({
+      name: 'gitfix_merge_abort',
+      arguments: args,
+    });
+    return res.structuredContent as { merge_id: string; aborted: boolean };
+  }
+
+  async conflictResolveBatch(args: {
+    repo_path: string;
+    merge_id: string;
+    decisions: Array<{ conflict_id: string; resolution: ResolutionDecision }>;
+  }): Promise<{ merge_id: string; resolved: number; failed: number; remaining_unresolved: number }> {
+    const res = await this.requireClient().callTool({
+      name: 'gitfix_conflict_resolve_batch',
+      arguments: args,
+    });
+    return res.structuredContent as { merge_id: string; resolved: number; failed: number; remaining_unresolved: number };
+  }
 }
