@@ -1,4 +1,3 @@
-import * as vscode from 'vscode';
 import * as cp from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -23,12 +22,17 @@ export async function setupSimpleMergeFixture(): Promise<string> {
   return tmp;
 }
 
-export async function waitForMergeContext(timeoutMs = 5000): Promise<void> {
+/**
+ * Poll for an in-progress merge by waiting for the workspace's `.git/MERGE_HEAD`
+ * to exist. This is the same signal the production MergeStateDetector uses and
+ * does not depend on any internal VS Code commands.
+ */
+export async function waitForMergeHead(repoPath: string, timeoutMs = 5000): Promise<void> {
+  const mergeHead = path.join(repoPath, '.git', 'MERGE_HEAD');
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const ctx = await vscode.commands.executeCommand('getContext', 'gitfix:hasMerge');
-    if (ctx) return;
-    await new Promise((r) => setTimeout(r, 200));
+    if (fs.existsSync(mergeHead)) return;
+    await new Promise((r) => setTimeout(r, 100));
   }
-  throw new Error('gitfix:hasMerge never set');
+  throw new Error(`.git/MERGE_HEAD never appeared at ${mergeHead}`);
 }

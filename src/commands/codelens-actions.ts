@@ -62,27 +62,33 @@ export function registerCodeLensCommands(
       const relPath = path.relative(state.repoPath, uri.fsPath);
       const conflict = tree.findUnresolvedByFile(relPath);
       if (!conflict) return;
-      await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'gitfix: requesting AI suggestion...' },
-        async () => {
-          const got = await client.conflictGet({
-            repo_path: state.repoPath!,
-            merge_id: tree.mergeId!,
-            conflict_id: conflict.conflict_id,
-            include_ai_suggestion: true,
-          });
-          if (!got.ai_suggestion) {
-            throw new Error(got.ai_suggestion_unavailable_reason ?? 'no suggestion produced');
-          }
-          await client.conflictResolve({
-            repo_path: state.repoPath!,
-            merge_id: tree.mergeId!,
-            conflict_id: conflict.conflict_id,
-            resolution: { kind: 'ai-suggestion' },
-          });
-          await tree.refresh(state.repoPath!);
-        },
-      );
+      try {
+        await vscode.window.withProgress(
+          { location: vscode.ProgressLocation.Notification, title: 'gitfix: requesting AI suggestion...' },
+          async () => {
+            const got = await client.conflictGet({
+              repo_path: state.repoPath!,
+              merge_id: tree.mergeId!,
+              conflict_id: conflict.conflict_id,
+              include_ai_suggestion: true,
+            });
+            if (!got.ai_suggestion) {
+              throw new Error(got.ai_suggestion_unavailable_reason ?? 'no suggestion produced');
+            }
+            await client.conflictResolve({
+              repo_path: state.repoPath!,
+              merge_id: tree.mergeId!,
+              conflict_id: conflict.conflict_id,
+              resolution: { kind: 'ai-suggestion' },
+            });
+            await tree.refresh(state.repoPath!);
+          },
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        log(`codelens resolveWithAi failed: ${msg}`);
+        vscode.window.showErrorMessage(`gitfix: ${msg}`);
+      }
     }),
   ];
 }

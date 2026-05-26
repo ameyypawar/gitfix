@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import { GfixMcpClient } from '../mcp/client';
-import type { MergePlan, UnresolvedConflict } from '../mcp/types';
+import type { MergePlan, MergeStatusResponse, UnresolvedConflict } from '../mcp/types';
 import { ConflictItem, MergeRootItem, ResolvedGroupItem, ResolvedItem } from './conflict-item';
+import { getMergeHeadOid } from '../git/detect';
 import { log } from '../log';
 
 type Node = MergeRootItem | ConflictItem | ResolvedGroupItem | ResolvedItem;
@@ -47,7 +48,21 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
     this.currentRepo = repoPath;
 
     try {
-      // Inspect git state to find a merge target and sources.
+      // If we already have a merge_id from a prior mergePreview call, query
+      // status rather than re-initializing — mergePreview is the init op per
+      // the gfix MCP contract; re-running it risks clobbering resolution
+      // progress. (P1-4)
+      if (this.currentPlanData?.merge_id) {
+        const status: MergeStatusResponse = await this.client.mergeStatus({
+          repo_path: repoPath,
+          merge_id: this.currentPlanData.merge_id,
+        });
+        this.currentPlanData = status.plan;
+        this.emitter.fire();
+        return;
+      }
+
+      // First-time refresh: inspect git state for target and source(s).
       const gitExt = vscode.extensions.getExtension('vscode.git');
       const gitApi = gitExt?.exports?.getAPI(1);
       const repo = gitApi?.repositories?.find(
@@ -55,8 +70,9 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
       );
       const target = repo?.state.HEAD?.name ?? 'HEAD';
 
-      // MERGE_HEAD short hash is the source; if more than one (octopus) join with comma.
-      const mergeHead: string | undefined = repo?.state.mergeHeadShortHash;
+      // Read MERGE_HEAD directly off disk. (P0-1: the vscode.git API has no
+      // mergeHeadShortHash field — the previous code was reading undefined.)
+      const mergeHead = getMergeHeadOid(repoPath);
       if (!mergeHead) {
         this.currentPlanData = undefined;
         this.emitter.fire();

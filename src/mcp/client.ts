@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { log } from '../log';
 import type {
   MergePreviewResponse,
@@ -8,6 +9,7 @@ import type {
   ConflictResolveResponse,
   ResolutionDecision,
 } from './types';
+import { unwrapStructuredContent } from './unwrap';
 
 const CLIENT_NAME = 'gitfix-vscode';
 const CLIENT_VERSION = '0.2.0';
@@ -79,7 +81,7 @@ export class GfixMcpClient {
       name: 'gitfix_merge_preview',
       arguments: args,
     });
-    return res.structuredContent as MergePreviewResponse;
+    return unwrapStructuredContent<MergePreviewResponse>(res as CallToolResult, 'gitfix_merge_preview');
   }
 
   async mergeStatus(args: {
@@ -90,7 +92,7 @@ export class GfixMcpClient {
       name: 'gitfix_merge_status',
       arguments: args,
     });
-    return res.structuredContent as MergeStatusResponse;
+    return unwrapStructuredContent<MergeStatusResponse>(res as CallToolResult, 'gitfix_merge_status');
   }
 
   async conflictGet(args: {
@@ -103,7 +105,7 @@ export class GfixMcpClient {
       name: 'gitfix_conflict_get',
       arguments: args,
     });
-    return res.structuredContent as ConflictGetResponse;
+    return unwrapStructuredContent<ConflictGetResponse>(res as CallToolResult, 'gitfix_conflict_get');
   }
 
   async conflictResolve(args: {
@@ -116,7 +118,7 @@ export class GfixMcpClient {
       name: 'gitfix_conflict_resolve',
       arguments: args,
     });
-    return res.structuredContent as ConflictResolveResponse;
+    return unwrapStructuredContent<ConflictResolveResponse>(res as CallToolResult, 'gitfix_conflict_resolve');
   }
 
   async mergeApply(args: {
@@ -128,7 +130,7 @@ export class GfixMcpClient {
       name: 'gitfix_merge_apply',
       arguments: args,
     });
-    return res.structuredContent as { merge_id: string; commit_oid: string; audit_ref: string };
+    return unwrapStructuredContent<{ merge_id: string; commit_oid: string; audit_ref: string }>(res as CallToolResult, 'gitfix_merge_apply');
   }
 
   async mergeAbort(args: { repo_path: string; merge_id: string }): Promise<{ merge_id: string; aborted: boolean }> {
@@ -136,7 +138,7 @@ export class GfixMcpClient {
       name: 'gitfix_merge_abort',
       arguments: args,
     });
-    return res.structuredContent as { merge_id: string; aborted: boolean };
+    return unwrapStructuredContent<{ merge_id: string; aborted: boolean }>(res as CallToolResult, 'gitfix_merge_abort');
   }
 
   async conflictResolveBatch(args: {
@@ -148,6 +150,6 @@ export class GfixMcpClient {
       name: 'gitfix_conflict_resolve_batch',
       arguments: args,
     });
-    return res.structuredContent as { merge_id: string; resolved: number; failed: number; remaining_unresolved: number };
+    return unwrapStructuredContent<{ merge_id: string; resolved: number; failed: number; remaining_unresolved: number }>(res as CallToolResult, 'gitfix_conflict_resolve_batch');
   }
 }

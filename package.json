@@ -119,9 +119,23 @@
         "category": "gitfix"
       },
       {
-        "command": "gitfix.resolveAi",
-        "title": "Resolve: With AI Suggestion",
-        "icon": "$(sparkle)",
+        "command": "gitfix.codelens.takeOurs",
+        "title": "Resolve (CodeLens): Take Ours",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.codelens.takeTheirs",
+        "title": "Resolve (CodeLens): Take Theirs",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.codelens.runMergiraf",
+        "title": "Resolve (CodeLens): Run Mergiraf",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.codelens.resolveWithAi",
+        "title": "Resolve (CodeLens): With AI Suggestion",
         "category": "gitfix"
       }
     ],
@@ -192,7 +206,10 @@
         { "command": "gitfix.resolveMergiraf", "when": "false" },
         { "command": "gitfix.resolveTakeTarget", "when": "false" },
         { "command": "gitfix.resolveBatchMergiraf", "when": "false" },
-        { "command": "gitfix.resolveAi", "when": "false" }
+        { "command": "gitfix.codelens.takeOurs", "when": "false" },
+        { "command": "gitfix.codelens.takeTheirs", "when": "false" },
+        { "command": "gitfix.codelens.runMergiraf", "when": "false" },
+        { "command": "gitfix.codelens.resolveWithAi", "when": "false" }
       ]
     },
     "configuration": {

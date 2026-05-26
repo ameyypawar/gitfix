@@ -79,24 +79,32 @@ export async function installSamplingHost(client: Client): Promise<{
     }
 
     const cts = new vscode.CancellationTokenSource();
-    const response = await picked.sendRequest(
-      lmMessages,
-      { justification: 'gitfix is generating a conflict resolution suggestion.' },
-      cts.token,
-    );
+    try {
+      const response = await picked.sendRequest(
+        lmMessages,
+        { justification: 'gitfix is generating a conflict resolution suggestion.' },
+        cts.token,
+      );
 
-    let buffer = '';
-    for await (const chunk of response.text) {
-      buffer += chunk;
-      if (maxTokens && buffer.length >= maxTokens * 4) break; // ~4 chars/token rough cap
+      let buffer = '';
+      for await (const chunk of response.text) {
+        buffer += chunk;
+        if (maxTokens && buffer.length >= maxTokens * 4) {
+          // Cancel upstream generation so we stop burning quota. (P2-1)
+          cts.cancel();
+          break;
+        }
+      }
+
+      return {
+        model: picked.id,
+        role: 'assistant' as const,
+        content: { type: 'text' as const, text: buffer },
+        stopReason: 'endTurn',
+      };
+    } finally {
+      cts.dispose();
     }
-
-    return {
-      model: picked.id,
-      role: 'assistant' as const,
-      content: { type: 'text' as const, text: buffer },
-      stopReason: 'endTurn',
-    };
   });
 
   return { available: true, modelLabel: models[0].name };

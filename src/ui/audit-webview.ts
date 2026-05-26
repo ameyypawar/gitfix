@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
+import * as crypto from 'node:crypto';
 import type { AuditEnvelope } from '../mcp/types';
 
 export class AuditPanel {
   private static instance: AuditPanel | undefined;
   private panel: vscode.WebviewPanel;
+  private currentAudit: AuditEnvelope;
 
   static showOrUpdate(audit: AuditEnvelope, context: vscode.ExtensionContext): AuditPanel {
     if (AuditPanel.instance) {
@@ -28,11 +30,14 @@ export class AuditPanel {
 
   private constructor(panel: vscode.WebviewPanel, audit: AuditEnvelope) {
     this.panel = panel;
+    this.currentAudit = audit;
     this.update(audit);
 
     panel.webview.onDidReceiveMessage((msg: { type: string; payload?: unknown }) => {
       if (msg.type === 'copyShareCmd') {
-        const cmd = `git push origin refs/gitfix/audit/${audit.metadata.merge_id}`;
+        // Read from the instance field, not the constructor-time closure, so
+        // subsequent update() calls are reflected. (P1-1)
+        const cmd = `git push origin refs/gitfix/audit/${this.currentAudit.metadata.merge_id}`;
         vscode.env.clipboard.writeText(cmd).then(() => {
           vscode.window.showInformationMessage(`Copied: ${cmd}`);
         });
@@ -41,10 +46,12 @@ export class AuditPanel {
   }
 
   update(audit: AuditEnvelope): void {
+    this.currentAudit = audit;
     this.panel.webview.html = this.render(audit);
   }
 
   private render(a: AuditEnvelope): string {
+    const nonce = crypto.randomBytes(16).toString('base64');
     const esc = (s: string) =>
       s.replace(/[&<>"']/g, (c) =>
         ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
@@ -65,6 +72,8 @@ export class AuditPanel {
 <html>
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
 <style>
   body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 16px; }
   h1, h2 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 4px; }
@@ -116,7 +125,7 @@ export class AuditPanel {
   <p style="margin-top: 16px;">
     <button onclick="vscode.postMessage({type:'copyShareCmd'})">Copy git command to share this audit</button>
   </p>
-<script>
+<script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
 </script>
 </body>

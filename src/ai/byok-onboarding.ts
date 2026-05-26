@@ -79,7 +79,16 @@ export function registerByokOnboardingCommand(): vscode.Disposable[] {
 }
 
 async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
-  fs.mkdirSync(path.dirname(KEYS_TOML_PATH), { recursive: true });
+  const dir = path.dirname(KEYS_TOML_PATH);
+  fs.mkdirSync(dir, { recursive: true });
+  // Tighten perms on the gitfix/ dir itself to 0o700. We deliberately do NOT
+  // chmod ~/.config — the user may have other tools relying on its existing
+  // permissions. (P2-3)
+  try {
+    fs.chmodSync(dir, 0o700);
+  } catch (err) {
+    log(`chmod gitfix config dir failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
+  }
   let existing = '';
   if (fs.existsSync(KEYS_TOML_PATH)) {
     existing = fs.readFileSync(KEYS_TOML_PATH, 'utf8');
