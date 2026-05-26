@@ -21,11 +21,11 @@ jobs:
       - run: npm run lint
       - run: npm run package
 
-      # Pre-release tags carry an alpha/beta suffix.
+      # Pre-release tags carry an alpha/beta/rc suffix.
       - name: Determine pre-release flag
         id: prerelease
         run: |
-          if [[ "${GITHUB_REF_NAME}" == *"-alpha"* || "${GITHUB_REF_NAME}" == *"-beta"* ]]; then
+          if [[ "${GITHUB_REF_NAME}" == *"-alpha"* || "${GITHUB_REF_NAME}" == *"-beta"* || "${GITHUB_REF_NAME}" == *"-rc"* ]]; then
             echo "flag=--pre-release" >> "$GITHUB_OUTPUT"
           else
             echo "flag=" >> "$GITHUB_OUTPUT"
@@ -48,4 +48,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: '*.vsix'
-          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') }}
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}

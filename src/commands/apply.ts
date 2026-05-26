@@ -15,13 +15,13 @@ export function registerApplyCommand(
       const client = getClient();
       const state = getState();
       if (!client || !state.repoPath || !tree.mergeId) {
-        vscode.window.showWarningMessage('gitfix: no active merge.');
+        vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no active merge.'));
         return;
       }
       const plan = tree.currentPlan;
       if (plan && plan.unresolved.length > 0) {
         vscode.window.showWarningMessage(
-          `gitfix: ${plan.unresolved.length} unresolved conflict(s). Resolve them before applying.`,
+          vscode.l10n.t('gitfix: {0} unresolved conflict(s). Resolve them before applying.', plan.unresolved.length),
         );
         return;
       }
@@ -31,8 +31,8 @@ export function registerApplyCommand(
       const needsConfirm = settings.protectedBranches.includes(targetBranch);
       if (needsConfirm) {
         const choice = await vscode.window.showWarningMessage(
-          `Apply merge to protected branch '${targetBranch}'?`,
-          { modal: true, detail: 'This will create a merge commit on ' + targetBranch + '.' },
+          vscode.l10n.t("Apply merge to protected branch '{0}'?", targetBranch),
+          { modal: true, detail: vscode.l10n.t('This will create a merge commit on {0}.', targetBranch) },
           'Apply',
         );
         if (choice !== 'Apply') return;
@@ -44,7 +44,7 @@ export function registerApplyCommand(
           auto_approve: needsConfirm, // server requires this for main
         });
         vscode.window.showInformationMessage(
-          `gitfix: merge applied as ${result.commit_oid.slice(0, 12)}`,
+          vscode.l10n.t('gitfix: merge applied as {0}', result.commit_oid.slice(0, 12)),
         );
         await tree.refresh(state.repoPath);
       } catch (err) {

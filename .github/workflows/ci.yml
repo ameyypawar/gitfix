@@ -8,7 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,12 +21,17 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
+      - run: npm run lint:l10n
       - run: npm run package
       - run: npm run test:compile
-      # Headless extension tests need xvfb on Linux.
-      - run: xvfb-run -a npm test
+      - name: Test (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: xvfb-run -a npm test
         env:
           DISPLAY: ':99.0'
+      - name: Test (macOS/Windows)
+        if: matrix.os != 'ubuntu-latest'
+        run: npm test
 
   integration:
     runs-on: ubuntu-latest

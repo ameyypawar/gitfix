@@ -121,8 +121,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         aiAvailable = host.available;
         if (!host.available && !byokStatus.configured) {
           vscode.window.showInformationMessage(
-            'gitfix: no AI provider available. Configure one to enable "Resolve with AI".',
-            'Configure',
+            vscode.l10n.t('gitfix: no AI provider available. Configure one to enable "Resolve with AI".'),
+            vscode.l10n.t('Configure'),
           ).then((c) => {
             if (c === 'Configure') vscode.commands.executeCommand('gitfix.configureAiProvider');
           });

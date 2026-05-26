@@ -14,7 +14,7 @@ export function registerAbortCommand(
       const client = getClient();
       const state = getState();
       if (!client || !state.repoPath || !tree.mergeId) {
-        vscode.window.showWarningMessage('gitfix: no active merge.');
+        vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no active merge.'));
         return;
       }
       const choice = await vscode.window.showWarningMessage(
@@ -28,7 +28,7 @@ export function registerAbortCommand(
           repo_path: state.repoPath,
           merge_id: tree.mergeId,
         });
-        vscode.window.showInformationMessage('gitfix: merge aborted.');
+        vscode.window.showInformationMessage(vscode.l10n.t('gitfix: merge aborted.'));
         await tree.refresh(state.repoPath);
       } catch (err) {
         log(`merge_abort failed: ${err instanceof Error ? err.message : String(err)}`);

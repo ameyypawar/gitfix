@@ -18,19 +18,9 @@
     "vscode": "^1.92.0",
     "node": ">=18"
   },
-  "categories": [
-    "SCM Providers",
-    "Other"
-  ],
-  "keywords": [
-    "merge",
-    "conflict",
-    "git",
-    "mergiraf",
-    "mcp",
-    "gitfix"
-  ],
-  "preview": true,
+  "categories": ["SCM Providers", "Linters"],
+  "keywords": ["merge", "conflict", "git", "mergiraf", "mcp", "gitfix", "vscode-merge", "conflict-resolution", "rerere"],
+  "l10n": "./l10n",
   "activationEvents": [
     "onStartupFinished",
     "workspaceContains:**/.git/MERGE_HEAD"
@@ -415,6 +405,7 @@
     "watch": "node esbuild.config.js --watch",
     "package": "node esbuild.config.js --production",
     "lint": "eslint src --ext ts",
+    "lint:l10n": "node scripts/check-l10n.js",
     "test:compile": "tsc -p ./",
     "test": "node ./out/test/runTest.js",
     "test:integration": "node ./out/test/runIntegrationTest.js",

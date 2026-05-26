@@ -46,7 +46,7 @@ export function registerAuditRefCommand(
       const client = getClient();
       if (!client) {
         vscode.window.showErrorMessage(
-          'gitfix: MCP server not available. Install gfix or set gitfix.gfixPath.',
+          vscode.l10n.t('gitfix: MCP server not available. Install gfix or set gitfix.gfixPath.'),
         );
         return;
       }
@@ -54,7 +54,7 @@ export function registerAuditRefCommand(
       const state = getState();
       const repoPath = state.repoPath ?? tree.currentRepoPath;
       if (!repoPath) {
-        vscode.window.showWarningMessage('gitfix: no workspace folder detected.');
+        vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no workspace folder detected.'));
         return;
       }
       await AuditListPanel.showForRepo(repoPath, client, context);
