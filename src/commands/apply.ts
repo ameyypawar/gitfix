@@ -2,9 +2,8 @@ import * as vscode from 'vscode';
 import { GfixMcpClient } from '../mcp/client';
 import { ConflictTreeProvider } from '../ui/conflict-tree';
 import type { MergeState } from '../git/detect';
+import { readSettings } from '../config/strategy-settings';
 import { log } from '../log';
-
-const PROTECTED = new Set(['main', 'master', 'develop', 'release']);
 
 export function registerApplyCommand(
   getClient: () => GfixMcpClient | undefined,
@@ -27,7 +26,9 @@ export function registerApplyCommand(
         return;
       }
       const targetBranch = plan?.target_branch ?? '';
-      const needsConfirm = PROTECTED.has(targetBranch);
+      // Read protected branches from settings (per-repo TOML override applied).
+      const settings = readSettings(state.repoPath);
+      const needsConfirm = settings.protectedBranches.includes(targetBranch);
       if (needsConfirm) {
         const choice = await vscode.window.showWarningMessage(
           `Apply merge to protected branch '${targetBranch}'?`,

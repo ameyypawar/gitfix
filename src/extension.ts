@@ -127,12 +127,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   }
 
   // 5. Detect merge state and refresh tree on changes.
-  detector = new MergeStateDetector(async (state) => {
-    log(`merge state changed: hasMerge=${state.hasMerge} repo=${state.repoPath ?? '(none)'}`);
-    await vscode.commands.executeCommand('setContext', 'gitfix:hasMerge', state.hasMerge);
-    codeLensProvider.setMergeActive(state.hasMerge);
-    if (state.hasMerge && state.repoPath && mcpClient) {
-      await treeProvider!.refresh(state.repoPath);
+  detector = new MergeStateDetector(async (multiState) => {
+    log(`merge state changed: anyActive=${multiState.anyActive} repos=${[...multiState.active.keys()].join(', ') || '(none)'}`);
+    await vscode.commands.executeCommand('setContext', 'gitfix:hasMerge', multiState.anyActive);
+    codeLensProvider.setMergeActive(multiState.anyActive);
+    if (multiState.anyActive && mcpClient) {
+      await treeProvider!.refreshAll(multiState);
       statusBar!.update(treeProvider!.conflictCount);
     } else {
       treeProvider!.clear();

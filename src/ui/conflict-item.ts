@@ -1,12 +1,19 @@
 import * as vscode from 'vscode';
+import * as path from 'node:path';
 import type { MergePlan, ResolvedEntry, UnresolvedConflict } from '../mcp/types';
 
 export class MergeRootItem extends vscode.TreeItem {
-  constructor(public readonly plan: MergePlan) {
-    super(
-      `Merge into ${plan.target_branch} (${plan.unresolved.length} unresolved)`,
-      vscode.TreeItemCollapsibleState.Expanded,
-    );
+  constructor(
+    public readonly plan: MergePlan,
+    public readonly repoPath: string,
+    totalActive: number,
+  ) {
+    const folderName = path.basename(repoPath);
+    const label =
+      totalActive > 1
+        ? `${folderName} — Merge into ${plan.target_branch} (${plan.unresolved.length} unresolved)`
+        : `Merge into ${plan.target_branch} (${plan.unresolved.length} unresolved)`;
+    super(label, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = 'merge';
     this.iconPath = new vscode.ThemeIcon('git-merge');
     const rerereCount = plan.resolved.filter((r) => r.via === 'rerere').length;
@@ -23,7 +30,10 @@ export class MergeRootItem extends vscode.TreeItem {
 }
 
 export class ResolvedGroupItem extends vscode.TreeItem {
-  constructor(public readonly resolved: ResolvedEntry[]) {
+  constructor(
+    public readonly resolved: ResolvedEntry[],
+    public readonly repoPath: string,
+  ) {
     super(`Auto-resolved (${resolved.length})`, vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = 'resolvedGroup';
     this.iconPath = new vscode.ThemeIcon('check');

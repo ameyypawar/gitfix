@@ -2,7 +2,7 @@
   "name": "gitfix",
   "displayName": "gitfix — Merge Conflict Inspector",
   "description": "Workspace-wide merge conflict inspector and companion to VS Code's built-in merge editor. Powered by gfix MCP.",
-  "version": "0.2.0",
+  "version": "1.0.0-rc.1",
   "publisher": "ameyypawar",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -240,6 +240,23 @@
           "type": "number",
           "default": 8,
           "description": "Show a notification when AI suggestion count reaches this number (default budget is 10/merge)."
+        },
+        "gitfix.mergeStrategy": {
+          "type": "string",
+          "enum": ["mergiraf", "text", "auto"],
+          "default": "auto",
+          "description": "Default strategy when invoking gitfix_merge_preview. 'auto' lets gfix pick (mergiraf for supported languages, text otherwise)."
+        },
+        "gitfix.allowRerere": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow rerere cache replay during merge_preview. Disable to force fresh resolution."
+        },
+        "gitfix.protectedBranches": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": ["main", "master", "develop", "release"],
+          "description": "Branches that require explicit confirmation in Apply Merge."
         }
       }
     }
