@@ -13,6 +13,7 @@ import { installSamplingHost } from './ai/sampling-host';
 import { checkBYOK, registerByokOnboardingCommand } from './ai/byok-onboarding';
 import { MergeStateDetector } from './git/detect';
 import { ConflictItem } from './ui/conflict-item';
+import { GitfixTelemetry } from './telemetry/reporter';
 import { log, showOutputChannel } from './log';
 
 let mcpClient: GfixMcpClient | undefined;
@@ -61,7 +62,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.languages.registerCodeLensProvider({ scheme: 'file' }, codeLensProvider),
   );
 
-  // 3. Register commands FIRST so they are always present regardless of MCP state.
+  // 3. Telemetry — init early (before commands) so events during boot are captured.
+  const telemetry = new GitfixTelemetry(context.extension.packageJSON.version as string);
+  telemetry.init(context);
+
+  // 3a. First-run telemetry consent toast (one-shot via globalState).
+  const CONSENT_KEY = 'gitfix.telemetry.consentShown';
+  if (!context.globalState.get(CONSENT_KEY)) {
+    context.globalState.update(CONSENT_KEY, true);
+    vscode.window.showInformationMessage(
+      vscode.l10n.t('gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.'),
+      vscode.l10n.t('Enable'),
+      vscode.l10n.t('Not now'),
+    ).then((c) => {
+      if (c === vscode.l10n.t('Enable')) {
+        vscode.workspace.getConfiguration('gitfix').update('telemetry.enabled', true, vscode.ConfigurationTarget.Global);
+      }
+    });
+  }
+
+  // 4. Register commands FIRST so they are always present regardless of MCP state.
   // Commands guard on getMcpClient() at invoke time and surface a helpful error
   // when the MCP server is unavailable.
   context.subscriptions.push(
@@ -72,6 +92,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ...registerAbortCommand(getMcpClient, treeProvider, () => detector!.currentState()),
     ...registerCodeLensCommands(getMcpClient, treeProvider, () => detector!.currentState()),
     ...registerByokOnboardingCommand(),
+    // Walkthrough command — opens the built-in walkthrough panel.
+    vscode.commands.registerCommand('gitfix.openWalkthrough', () => {
+      vscode.commands.executeCommand(
+        'workbench.action.openWalkthrough',
+        'ameyypawar.gitfix#gitfix.getStarted',
+      );
+    }),
   );
 
   // 4. Boot MCP client (async; failure is non-fatal — commands will show an error at
@@ -107,9 +134,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       }
     }
     codeLensProvider.setAiAvailable(aiAvailable);
+    telemetry.send('extension.activated', {
+      lmAvailable: aiAvailable ? 'true' : 'false',
+      byokConfigured: byokStatus.configured ? 'true' : 'false',
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`MCP startup failed: ${msg}`);
+    telemetry.send('extension.error', { errorClass: (err as Error)?.constructor?.name ?? 'Error', command: 'activate' });
     vscode.window
       .showErrorMessage(
         `gitfix: failed to start gfix MCP server (${msg}). Install gfix or set gitfix.gfixPath.`,
