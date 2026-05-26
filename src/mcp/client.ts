@@ -10,7 +10,7 @@ import type {
 } from './types';
 
 const CLIENT_NAME = 'gitfix-vscode';
-const CLIENT_VERSION = '0.1.0';
+const CLIENT_VERSION = '0.2.0';
 
 export class GfixMcpClient {
   private client?: Client;
@@ -18,11 +18,14 @@ export class GfixMcpClient {
 
   constructor(private gfixPath: string) {}
 
-  async start(): Promise<void> {
+  async start(opts: { enableByok: boolean } = { enableByok: false }): Promise<void> {
     this.transport = new StdioClientTransport({
       command: this.gfixPath,
       args: ['mcp'],
       stderr: 'pipe',
+      env: opts.enableByok
+        ? { ...process.env as Record<string, string>, GITFIX_BYOK: '1' }
+        : undefined,
     });
 
     // Forward subprocess stderr to the output channel for debugging.
@@ -32,7 +35,7 @@ export class GfixMcpClient {
 
     this.client = new Client(
       { name: CLIENT_NAME, version: CLIENT_VERSION },
-      { capabilities: {} }, // No host capabilities (no sampling) in v0.1.
+      { capabilities: { sampling: {} } }, // Advertise sampling so gfix uses vscode.lm path.
     );
 
     await this.client.connect(this.transport);
@@ -52,6 +55,10 @@ export class GfixMcpClient {
     }
     this.client = undefined;
     this.transport = undefined;
+  }
+
+  getRawClient(): Client | undefined {
+    return this.client;
   }
 
   private requireClient(): Client {

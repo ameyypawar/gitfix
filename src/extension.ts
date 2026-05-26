@@ -9,6 +9,8 @@ import { registerApplyCommand } from './commands/apply';
 import { registerAbortCommand } from './commands/abort';
 import { registerCodeLensCommands } from './commands/codelens-actions';
 import { ConflictCodeLensProvider } from './ui/codelens-provider';
+import { installSamplingHost } from './ai/sampling-host';
+import { checkBYOK, registerByokOnboardingCommand } from './ai/byok-onboarding';
 import { MergeStateDetector } from './git/detect';
 import { ConflictItem } from './ui/conflict-item';
 import { log, showOutputChannel } from './log';
@@ -69,15 +71,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ...registerApplyCommand(getMcpClient, treeProvider, () => detector!.currentState()),
     ...registerAbortCommand(getMcpClient, treeProvider, () => detector!.currentState()),
     ...registerCodeLensCommands(getMcpClient, treeProvider, () => detector!.currentState()),
+    ...registerByokOnboardingCommand(),
   );
 
   // 4. Boot MCP client (async; failure is non-fatal — commands will show an error at
   // invoke time instead of leaving the extension entirely unregistered).
+  // Check BYOK before starting so we can pass enableByok to the subprocess.
+  const byokStatus = checkBYOK();
   try {
     mcpClient = new GfixMcpClient(gfixPath);
-    await mcpClient.start();
+    await mcpClient.start({ enableByok: byokStatus.configured });
     log(`MCP client connected to ${gfixPath}`);
     treeProvider.setClient(mcpClient);
+
+    // 4a. Install vscode.lm sampling host and surface AI availability to CodeLens.
+    const provider = config.get<'host' | 'byok' | 'none'>('aiProvider', 'host');
+    let aiAvailable = false;
+    if (provider !== 'none') {
+      const raw = mcpClient.getRawClient();
+      if (raw && provider === 'host') {
+        const host = await installSamplingHost(raw);
+        aiAvailable = host.available;
+        if (!host.available && !byokStatus.configured) {
+          vscode.window.showInformationMessage(
+            'gitfix: no AI provider available. Configure one to enable "Resolve with AI".',
+            'Configure',
+          ).then((c) => {
+            if (c === 'Configure') vscode.commands.executeCommand('gitfix.configureAiProvider');
+          });
+        } else if (!host.available && byokStatus.configured) {
+          aiAvailable = true; // gfix subprocess handles BYOK transparently
+        }
+      } else if (provider === 'byok') {
+        aiAvailable = byokStatus.configured;
+      }
+    }
+    codeLensProvider.setAiAvailable(aiAvailable);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`MCP startup failed: ${msg}`);
