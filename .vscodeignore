@@ -1,0 +1,9 @@
+src/**
+test/**
+out/**
+.vscode/**
+*.config.js
+tsconfig.json
+.eslintrc.json
+node_modules/.cache
+.github/**
