@@ -40,7 +40,7 @@ jobs:
           gfix --version
         env:
           GH_TOKEN: ${{ github.token }}
-      - run: npm ci && npm run compile
+      - run: npm ci && npm run compile && npm run test:compile
       - run: xvfb-run -a npm run test:integration
         env:
           DISPLAY: ':99.0'
