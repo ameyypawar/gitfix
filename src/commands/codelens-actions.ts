@@ -15,12 +15,12 @@ export function registerCodeLensCommands(
     async (uri: vscode.Uri, _line: number) => {
       const client = getClient();
       if (!client) {
-        vscode.window.showErrorMessage('gitfix: MCP server not available.');
+        vscode.window.showErrorMessage(vscode.l10n.t('gitfix: MCP server not available.'));
         return;
       }
       const state = getState();
       if (!state.hasMerge || !state.repoPath || !tree.mergeId) {
-        vscode.window.showWarningMessage('gitfix: no active merge.');
+        vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no active merge.'));
         return;
       }
       const relPath = path.relative(state.repoPath, uri.fsPath);
@@ -64,7 +64,7 @@ export function registerCodeLensCommands(
       if (!conflict) return;
       try {
         await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Notification, title: 'gitfix: requesting AI suggestion...' },
+          { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('gitfix: requesting AI suggestion...') },
           async () => {
             const got = await client.conflictGet({
               repo_path: state.repoPath!,

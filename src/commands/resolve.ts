@@ -45,7 +45,7 @@ export function registerResolveCommands(
       async (_first: ConflictItem | undefined, all?: ConflictItem[]) => {
         const items = all && all.length > 0 ? all : (_first ? [_first] : []);
         if (items.length === 0) {
-          vscode.window.showWarningMessage('gitfix: select one or more conflicts.');
+          vscode.window.showWarningMessage(vscode.l10n.t('gitfix: select one or more conflicts.'));
           return;
         }
         const client = getClient();
@@ -90,19 +90,19 @@ async function resolve(
   const client = getClient();
   if (!client) {
     vscode.window.showErrorMessage(
-      'gitfix: MCP server not available. Install gfix or set gitfix.gfixPath.',
+      vscode.l10n.t('gitfix: MCP server not available. Install gfix or set gitfix.gfixPath.'),
     );
     return;
   }
   if (!item) {
     vscode.window.showWarningMessage(
-      'gitfix: right-click a conflict in the tree to resolve.',
+      vscode.l10n.t('gitfix: right-click a conflict in the tree to resolve.'),
     );
     return;
   }
   const state = getState();
   if (!state.hasMerge || !state.repoPath || !tree.mergeId) {
-    vscode.window.showErrorMessage('gitfix: no active merge.');
+    vscode.window.showErrorMessage(vscode.l10n.t('gitfix: no active merge.'));
     return;
   }
 

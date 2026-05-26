@@ -2,18 +2,21 @@ import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { log } from '../log';
+import { scanWorkspaceFolders } from '../workspace/multi-folder';
+import type { MultiRepoState } from '../workspace/multi-folder';
 
+/** Single-folder merge state (kept for backward compat with command handlers). */
 export interface MergeState {
   hasMerge: boolean;
   repoPath?: string;
 }
 
-type Listener = (state: MergeState) => void | Promise<void>;
+type Listener = (state: MultiRepoState) => void | Promise<void>;
 
 export class MergeStateDetector implements vscode.Disposable {
   private fsWatcher?: vscode.FileSystemWatcher;
   private gitDisposable?: vscode.Disposable;
-  private last: MergeState = { hasMerge: false };
+  private last: MultiRepoState = { active: new Map(), anyActive: false };
 
   constructor(private listener: Listener) {}
 
@@ -46,22 +49,28 @@ export class MergeStateDetector implements vscode.Disposable {
     await this.recompute();
   }
 
-  currentState(): MergeState {
+  /** Returns the current multi-repo state snapshot. */
+  currentMultiState(): MultiRepoState {
     return this.last;
   }
 
+  /**
+   * Legacy single-repo state accessor. Returns the first active repo or a
+   * no-merge state. Used by command handlers that don't yet distinguish repos.
+   */
+  currentState(): MergeState {
+    if (!this.last.anyActive) return { hasMerge: false };
+    const first = [...this.last.active.values()][0];
+    return { hasMerge: true, repoPath: first.repoPath };
+  }
+
   private async recompute(): Promise<void> {
-    const folders = vscode.workspace.workspaceFolders ?? [];
-    let next: MergeState = { hasMerge: false };
-    for (const folder of folders) {
-      const mergeHead = path.join(folder.uri.fsPath, '.git', 'MERGE_HEAD');
-      if (fs.existsSync(mergeHead)) {
-        next = { hasMerge: true, repoPath: folder.uri.fsPath };
-        break;
-      }
-    }
+    const next = scanWorkspaceFolders();
+    // Compare by size and key set to detect changes.
     const changed =
-      next.hasMerge !== this.last.hasMerge || next.repoPath !== this.last.repoPath;
+      next.anyActive !== this.last.anyActive ||
+      next.active.size !== this.last.active.size ||
+      [...next.active.keys()].some((k) => !this.last.active.has(k));
     this.last = next;
     if (changed) {
       await this.listener(next);

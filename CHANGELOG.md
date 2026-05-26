@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-05-26
+
+### Added
+- Multi-folder workspace support: all workspace folders with an active merge are shown
+  simultaneously as separate root items in the conflict tree. The tree label includes the
+  folder name when more than one repo is merging.
+- Strategy settings (`gitfix.mergeStrategy`, `gitfix.allowRerere`, `gitfix.protectedBranches`):
+  VS Code settings with per-repo override via `.gitfix/config.toml`.
+- Audit refs management Webview (`gitfix.listAuditRefs`): list, view, delete, and copy git
+  push commands for all `refs/gitfix/audit/*` refs in the workspace.
+- Opt-in telemetry (`gitfix.telemetry.enabled`, default off): anonymized usage events with
+  strict PII filtering. Transport is stubbed (logs to output channel) until v1.1.
+- First-run telemetry consent toast (one-shot, respects VS Code-wide telemetry setting).
+- Welcome walkthrough (`gitfix.openWalkthrough`): 4-step guide covering CLI install, AI setup,
+  first merge, and audit refs.
+- Localization scaffold: `vscode.l10n.t()` wrapping for all user-facing strings;
+  `l10n/bundle.l10n.json` seed file; `package.nls.json` for command/setting titles.
+- `lint:l10n` script: CI check that no raw `'gitfix: '` strings remain outside `l10n.t()`.
+- CI matrix expanded to `ubuntu-latest`, `macos-14`, `windows-latest`.
+- `release.yml` now recognizes `-rc` tags as pre-release (alongside `-alpha`/`-beta`).
+
+### Changed
+- `gitfix.protectedBranches` setting replaces the hardcoded `PROTECTED` constant in apply.ts.
+- Categories: `["SCM Providers", "Linters"]` (was `["SCM Providers", "Other"]`).
+- Keywords expanded with `vscode-merge`, `conflict-resolution`, `rerere`.
+- `preview` flag removed from `package.json` (GA release).
+
 ## [0.2.0-beta] - 2026-05-26
 
 ### Added

@@ -1,0 +1,14 @@
+{
+  "gitfix: no active merge.": "gitfix: no active merge.",
+  "gitfix: {0} unresolved conflict(s). Resolve them before applying.": "gitfix: {0} unresolved conflict(s). Resolve them before applying.",
+  "gitfix: merge applied as {0}": "gitfix: merge applied as {0}",
+  "Copied: {0}": "Copied: {0}",
+  "Apply merge to protected branch '{0}'?": "Apply merge to protected branch '{0}'?",
+  "This will create a merge commit on {0}.": "This will create a merge commit on {0}.",
+  "Reload": "Reload",
+  "Configure": "Configure",
+  "Enable": "Enable",
+  "Not now": "Not now",
+  "gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.": "gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.",
+  "gitfix: no workspace folder detected.": "gitfix: no workspace folder detected."
+}

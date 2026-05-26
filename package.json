@@ -2,7 +2,7 @@
   "name": "gitfix",
   "displayName": "gitfix — Merge Conflict Inspector",
   "description": "Workspace-wide merge conflict inspector and companion to VS Code's built-in merge editor. Powered by gfix MCP.",
-  "version": "0.2.0",
+  "version": "1.0.0-rc.1",
   "publisher": "ameyypawar",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -18,9 +18,9 @@
     "vscode": "^1.92.0",
     "node": ">=18"
   },
-  "categories": ["SCM Providers", "Other"],
-  "keywords": ["merge", "conflict", "git", "mergiraf", "mcp", "gitfix"],
-  "preview": true,
+  "categories": ["SCM Providers", "Linters"],
+  "keywords": ["merge", "conflict", "git", "mergiraf", "mcp", "gitfix", "vscode-merge", "conflict-resolution", "rerere"],
+  "l10n": "./l10n",
   "activationEvents": [
     "onStartupFinished",
     "workspaceContains:**/.git/MERGE_HEAD"
@@ -137,6 +137,17 @@
         "command": "gitfix.codelens.resolveWithAi",
         "title": "Resolve (CodeLens): With AI Suggestion",
         "category": "gitfix"
+      },
+      {
+        "command": "gitfix.listAuditRefs",
+        "title": "List Audit Refs",
+        "icon": "$(list-unordered)",
+        "category": "gitfix"
+      },
+      {
+        "command": "gitfix.openWalkthrough",
+        "title": "Get Started with gitfix",
+        "category": "gitfix"
       }
     ],
     "menus": {
@@ -155,6 +166,11 @@
           "command": "gitfix.abortMerge",
           "when": "view == gitfix.conflicts && gitfix:hasMerge",
           "group": "navigation@3"
+        },
+        {
+          "command": "gitfix.listAuditRefs",
+          "when": "view == gitfix.conflicts",
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -195,21 +211,70 @@
         }
       ],
       "commandPalette": [
-        { "command": "gitfix.refresh" },
-        { "command": "gitfix.showAuditRef", "when": "gitfix:hasMerge" },
-        { "command": "gitfix.applyMerge", "when": "gitfix:hasMerge" },
-        { "command": "gitfix.abortMerge", "when": "gitfix:hasMerge" },
-        { "command": "gitfix.configureAiProvider" },
-        { "command": "gitfix.openFile", "when": "false" },
-        { "command": "gitfix.resolveOurs", "when": "false" },
-        { "command": "gitfix.resolveTheirs", "when": "false" },
-        { "command": "gitfix.resolveMergiraf", "when": "false" },
-        { "command": "gitfix.resolveTakeTarget", "when": "false" },
-        { "command": "gitfix.resolveBatchMergiraf", "when": "false" },
-        { "command": "gitfix.codelens.takeOurs", "when": "false" },
-        { "command": "gitfix.codelens.takeTheirs", "when": "false" },
-        { "command": "gitfix.codelens.runMergiraf", "when": "false" },
-        { "command": "gitfix.codelens.resolveWithAi", "when": "false" }
+        {
+          "command": "gitfix.refresh"
+        },
+        {
+          "command": "gitfix.showAuditRef",
+          "when": "gitfix:hasMerge"
+        },
+        {
+          "command": "gitfix.applyMerge",
+          "when": "gitfix:hasMerge"
+        },
+        {
+          "command": "gitfix.abortMerge",
+          "when": "gitfix:hasMerge"
+        },
+        {
+          "command": "gitfix.configureAiProvider"
+        },
+        {
+          "command": "gitfix.openFile",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.resolveOurs",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.resolveTheirs",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.resolveMergiraf",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.resolveTakeTarget",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.resolveBatchMergiraf",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.codelens.takeOurs",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.codelens.takeTheirs",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.codelens.runMergiraf",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.codelens.resolveWithAi",
+          "when": "false"
+        },
+        {
+          "command": "gitfix.listAuditRefs"
+        },
+        {
+          "command": "gitfix.openWalkthrough"
+        }
       ]
     },
     "configuration": {
@@ -232,7 +297,11 @@
         },
         "gitfix.aiProvider": {
           "type": "string",
-          "enum": ["host", "byok", "none"],
+          "enum": [
+            "host",
+            "byok",
+            "none"
+          ],
           "default": "host",
           "description": "AI suggestion source. 'host' uses VS Code's Language Model API (Copilot, etc.). 'byok' uses keys from ~/.config/gitfix/keys.toml or env. 'none' disables AI."
         },
@@ -240,9 +309,95 @@
           "type": "number",
           "default": 8,
           "description": "Show a notification when AI suggestion count reaches this number (default budget is 10/merge)."
+        },
+        "gitfix.mergeStrategy": {
+          "type": "string",
+          "enum": [
+            "mergiraf",
+            "text",
+            "auto"
+          ],
+          "default": "auto",
+          "description": "Default strategy when invoking gitfix_merge_preview. 'auto' lets gfix pick (mergiraf for supported languages, text otherwise)."
+        },
+        "gitfix.allowRerere": {
+          "type": "boolean",
+          "default": true,
+          "description": "Allow rerere cache replay during merge_preview. Disable to force fresh resolution."
+        },
+        "gitfix.protectedBranches": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "main",
+            "master",
+            "develop",
+            "release"
+          ],
+          "description": "Branches that require explicit confirmation in Apply Merge."
+        },
+        "gitfix.telemetry.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Send anonymized usage telemetry. Honors vscode.env.isTelemetryEnabled — disabled if VS Code-wide telemetry is off."
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "gitfix.getStarted",
+        "title": "Get started with gitfix",
+        "description": "Resolve merge conflicts with deterministic + AI suggestions, audit-logged.",
+        "steps": [
+          {
+            "id": "installGfix",
+            "title": "Install the gfix CLI",
+            "description": "gitfix calls the gfix CLI under the hood. Install it from https://gfix.space, then return here.\n[Open install guide](https://gfix.space/install)",
+            "media": {
+              "markdown": "media/walkthrough/install.md"
+            },
+            "completionEvents": [
+              "onCommand:gitfix.refresh"
+            ]
+          },
+          {
+            "id": "configureAi",
+            "title": "Configure an AI provider (optional)",
+            "description": "AI suggestions need either a Language Model host (Copilot, etc.) or a BYO API key.\n[Configure AI Provider](command:gitfix.configureAiProvider)",
+            "media": {
+              "markdown": "media/walkthrough/ai.md"
+            },
+            "completionEvents": [
+              "onCommand:gitfix.configureAiProvider"
+            ]
+          },
+          {
+            "id": "tryMerge",
+            "title": "Try it on a real merge",
+            "description": "Start a `git merge <branch>` in your terminal; gitfix activates automatically. Open the **gitfix** panel from the Activity Bar.",
+            "media": {
+              "markdown": "media/walkthrough/merge.md"
+            },
+            "completionEvents": [
+              "onContext:gitfix:hasMerge"
+            ]
+          },
+          {
+            "id": "audit",
+            "title": "Read the audit ref",
+            "description": "Every applied merge is recorded under `refs/gitfix/audit/<merge_id>`. Inspect via **List Audit Refs**.\n[List Audit Refs](command:gitfix.listAuditRefs)",
+            "media": {
+              "markdown": "media/walkthrough/audit.md"
+            },
+            "completionEvents": [
+              "onCommand:gitfix.listAuditRefs"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
@@ -250,6 +405,7 @@
     "watch": "node esbuild.config.js --watch",
     "package": "node esbuild.config.js --production",
     "lint": "eslint src --ext ts",
+    "lint:l10n": "node scripts/check-l10n.js",
     "test:compile": "tsc -p ./",
     "test": "node ./out/test/runTest.js",
     "test:integration": "node ./out/test/runIntegrationTest.js",
@@ -258,20 +414,25 @@
     "ovsx:publish": "ovsx publish --pre-release"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@microsoft/applicationinsights-analytics-js": "^3.4.1",
+    "@microsoft/applicationinsights-channel-js": "^3.4.1",
+    "@microsoft/applicationinsights-common": "^3.4.1",
+    "@microsoft/applicationinsights-core-js": "^3.4.1",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@vscode/extension-telemetry": "^0.9.9"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.6",
     "@types/node": "^18.x",
     "@types/vscode": "^1.92.0",
-    "@types/mocha": "^10.0.6",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
     "@vscode/test-electron": "^2.3.8",
     "@vscode/vsce": "^2.24.0",
-    "ovsx": "^0.9.0",
     "esbuild": "^0.20.0",
     "eslint": "^8.56.0",
     "mocha": "^10.3.0",
+    "ovsx": "^0.9.0",
     "typescript": "^5.3.0"
   }
 }

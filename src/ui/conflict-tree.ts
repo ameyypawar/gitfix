@@ -3,6 +3,7 @@ import { GfixMcpClient } from '../mcp/client';
 import type { MergePlan, MergeStatusResponse, UnresolvedConflict } from '../mcp/types';
 import { ConflictItem, MergeRootItem, ResolvedGroupItem, ResolvedItem } from './conflict-item';
 import { getMergeHeadOid } from '../git/detect';
+import type { MultiRepoState } from '../workspace/multi-folder';
 import { log } from '../log';
 
 type Node = MergeRootItem | ConflictItem | ResolvedGroupItem | ResolvedItem;
@@ -12,53 +13,83 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
   readonly onDidChangeTreeData = this.emitter.event;
 
   private client?: GfixMcpClient;
-  private currentPlanData?: MergePlan;
-  private currentRepo?: string;
+  /** Per-repo plan map: repoPath -> MergePlan */
+  private plans = new Map<string, MergePlan>();
 
   setClient(client: GfixMcpClient): void {
     this.client = client;
   }
 
   get conflictCount(): number {
-    return this.currentPlanData?.unresolved.length ?? 0;
+    let total = 0;
+    for (const plan of this.plans.values()) total += plan.unresolved.length;
+    return total;
   }
 
+  /** Returns the first active repo path (legacy compat for single-repo commands). */
   get currentRepoPath(): string | undefined {
-    return this.currentRepo;
+    return this.plans.size > 0 ? [...this.plans.keys()][0] : undefined;
   }
 
+  /** Returns the merge_id for the first active repo (legacy compat). */
   get mergeId(): string | undefined {
-    return this.currentPlanData?.merge_id;
+    return this.plans.size > 0 ? [...this.plans.values()][0]?.merge_id : undefined;
   }
 
+  /** Returns the plan for the first active repo (legacy compat). */
   get currentPlan(): MergePlan | undefined {
-    return this.currentPlanData;
+    return this.plans.size > 0 ? [...this.plans.values()][0] : undefined;
+  }
+
+  /** Returns the merge_id for a specific repo path. */
+  mergeIdForRepo(repoPath: string): string | undefined {
+    return this.plans.get(repoPath)?.merge_id;
+  }
+
+  /** Returns the plan for a specific repo path. */
+  planForRepo(repoPath: string): MergePlan | undefined {
+    return this.plans.get(repoPath);
   }
 
   clear(): void {
-    this.currentPlanData = undefined;
-    this.currentRepo = undefined;
+    this.plans.clear();
+    this.emitter.fire();
+  }
+
+  /** Refresh all repos in a multi-repo state. Drops plans for inactive folders. */
+  async refreshAll(state: MultiRepoState): Promise<void> {
+    // Drop plans for folders no longer in merge state.
+    for (const k of [...this.plans.keys()]) {
+      if (!state.active.has(k)) this.plans.delete(k);
+    }
+    for (const repoPath of state.active.keys()) {
+      await this.refreshRepo(repoPath);
+    }
     this.emitter.fire();
   }
 
   async refresh(repoPath: string): Promise<void> {
+    await this.refreshRepo(repoPath);
+    this.emitter.fire();
+  }
+
+  private async refreshRepo(repoPath: string): Promise<void> {
     if (!this.client) {
       return;
     }
-    this.currentRepo = repoPath;
 
     try {
-      // If we already have a merge_id from a prior mergePreview call, query
-      // status rather than re-initializing — mergePreview is the init op per
-      // the gfix MCP contract; re-running it risks clobbering resolution
-      // progress. (P1-4)
-      if (this.currentPlanData?.merge_id) {
+      const existing = this.plans.get(repoPath);
+
+      // If we already have a merge_id, query status to avoid re-initializing.
+      // mergePreview is the init op per the gfix MCP contract; re-running it
+      // risks clobbering resolution progress.
+      if (existing?.merge_id) {
         const status: MergeStatusResponse = await this.client.mergeStatus({
           repo_path: repoPath,
-          merge_id: this.currentPlanData.merge_id,
+          merge_id: existing.merge_id,
         });
-        this.currentPlanData = status.plan;
-        this.emitter.fire();
+        this.plans.set(repoPath, status.plan);
         return;
       }
 
@@ -70,28 +101,26 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
       );
       const target = repo?.state.HEAD?.name ?? 'HEAD';
 
-      // Read MERGE_HEAD directly off disk. (P0-1: the vscode.git API has no
-      // mergeHeadShortHash field — the previous code was reading undefined.)
+      // Read MERGE_HEAD directly off disk.
       const mergeHead = getMergeHeadOid(repoPath);
       if (!mergeHead) {
-        this.currentPlanData = undefined;
-        this.emitter.fire();
+        this.plans.delete(repoPath);
         return;
       }
 
-      this.currentPlanData = await this.client.mergePreview({
+      const plan = await this.client.mergePreview({
         repo_path: repoPath,
         target,
         sources: [mergeHead],
       });
+      this.plans.set(repoPath, plan);
     } catch (err) {
-      log(`tree refresh failed: ${err instanceof Error ? err.message : String(err)}`);
+      log(`tree refresh failed for ${repoPath}: ${err instanceof Error ? err.message : String(err)}`);
       vscode.window.showErrorMessage(
         `gitfix: ${err instanceof Error ? err.message : String(err)}`,
       );
-      this.currentPlanData = undefined;
+      this.plans.delete(repoPath);
     }
-    this.emitter.fire();
   }
 
   getTreeItem(element: Node): vscode.TreeItem {
@@ -99,14 +128,21 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
   }
 
   getChildren(element?: Node): Node[] {
-    if (!this.currentPlanData) return [];
-    if (!element) return [new MergeRootItem(this.currentPlanData)];
-    if (element instanceof MergeRootItem) {
-      const children: Node[] = this.currentPlanData.unresolved.map(
-        (u) => new ConflictItem(u, this.currentRepo!),
+    if (!element) {
+      // Top level: one MergeRootItem per active repo.
+      const totalActive = this.plans.size;
+      return [...this.plans.entries()].map(
+        ([repoPath, plan]) => new MergeRootItem(plan, repoPath, totalActive),
       );
-      if (this.currentPlanData.resolved.length > 0) {
-        children.push(new ResolvedGroupItem(this.currentPlanData.resolved));
+    }
+    if (element instanceof MergeRootItem) {
+      const plan = this.plans.get(element.repoPath);
+      if (!plan) return [];
+      const children: Node[] = plan.unresolved.map(
+        (u) => new ConflictItem(u, element.repoPath),
+      );
+      if (plan.resolved.length > 0) {
+        children.push(new ResolvedGroupItem(plan.resolved, element.repoPath));
       }
       return children;
     }
@@ -117,10 +153,28 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
   }
 
   findUnresolved(conflictId: string): UnresolvedConflict | undefined {
-    return this.currentPlanData?.unresolved.find((u) => u.conflict_id === conflictId);
+    for (const plan of this.plans.values()) {
+      const found = plan.unresolved.find((u) => u.conflict_id === conflictId);
+      if (found) return found;
+    }
+    return undefined;
   }
 
   findUnresolvedByFile(file: string): UnresolvedConflict | undefined {
-    return this.currentPlanData?.unresolved.find((u) => u.file === file);
+    for (const plan of this.plans.values()) {
+      const found = plan.unresolved.find((u) => u.file === file);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  /** Find unresolved conflict by relative file path within a specific repo. */
+  findUnresolvedByFileInRepo(repoPath: string, file: string): UnresolvedConflict | undefined {
+    return this.plans.get(repoPath)?.unresolved.find((u) => u.file === file);
+  }
+
+  /** All active repo paths. */
+  activeRepoPaths(): string[] {
+    return [...this.plans.keys()];
   }
 }
