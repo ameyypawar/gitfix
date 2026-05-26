@@ -73,3 +73,19 @@ export class MergeStateDetector implements vscode.Disposable {
     this.gitDisposable?.dispose();
   }
 }
+
+/**
+ * Read the merge head OID from `.git/MERGE_HEAD`. Returns the first OID
+ * (octopus merges have multiple lines — v0.2 returns the first source only).
+ * Returns undefined when no merge is in progress or the file is unreadable.
+ */
+export function getMergeHeadOid(repoPath: string): string | undefined {
+  const mergeHeadPath = path.join(repoPath, '.git', 'MERGE_HEAD');
+  try {
+    const raw = fs.readFileSync(mergeHeadPath, 'utf8');
+    const first = raw.split('\n')[0]?.trim();
+    return first && first.length > 0 ? first : undefined;
+  } catch {
+    return undefined;
+  }
+}

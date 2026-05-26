@@ -92,3 +92,20 @@ export interface ConflictResolveResponse {
   via: string;
   remaining_unresolved: number;
 }
+
+export interface AuditMetadata {
+  merge_id: string;
+  target_branch: string;
+  sources: string[];
+  strategy: string;
+  substrate: string;
+  started_at: string;
+  applied_at?: string;
+  commit_oid?: string;
+}
+
+export interface AuditEnvelope {
+  metadata: AuditMetadata;
+  plan: MergePlan;
+  decisions: DecisionLogEntry[];
+}

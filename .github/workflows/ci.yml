@@ -23,3 +23,24 @@ jobs:
       - run: xvfb-run -a npm test
         env:
           DISPLAY: ':99.0'
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install gfix
+        run: |
+          gh release download --repo ameyypawar/gfix --pattern '*x86_64-unknown-linux-gnu.tar.gz' --output gfix.tar.gz
+          tar -xzf gfix.tar.gz
+          sudo mv gfix /usr/local/bin/
+          gfix --version
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - run: npm ci && npm run compile && npm run test:compile
+      - run: xvfb-run -a npm run test:integration
+        env:
+          DISPLAY: ':99.0'

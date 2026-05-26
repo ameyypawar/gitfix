@@ -5,7 +5,14 @@ import { StatusBar } from './ui/status-bar';
 import { registerResolveCommands } from './commands/resolve';
 import { registerRefreshCommand } from './commands/refresh';
 import { registerAuditRefCommand } from './commands/audit-ref';
+import { registerApplyCommand } from './commands/apply';
+import { registerAbortCommand } from './commands/abort';
+import { registerCodeLensCommands } from './commands/codelens-actions';
+import { ConflictCodeLensProvider } from './ui/codelens-provider';
+import { installSamplingHost } from './ai/sampling-host';
+import { checkBYOK, registerByokOnboardingCommand } from './ai/byok-onboarding';
 import { MergeStateDetector } from './git/detect';
+import { ConflictItem } from './ui/conflict-item';
 import { log, showOutputChannel } from './log';
 
 let mcpClient: GfixMcpClient | undefined;
@@ -28,28 +35,78 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const treeView = vscode.window.createTreeView('gitfix.conflicts', {
     treeDataProvider: treeProvider,
     showCollapseAll: true,
+    canSelectMany: true,
   });
   context.subscriptions.push(treeView);
+
+  // Selection listener: update gitfix:conflictHasTakeTarget context key when a conflict
+  // item with target_oid !== ours_oid is selected (enables "Take Target" context menu entry).
+  context.subscriptions.push(
+    treeView.onDidChangeSelection((e) => {
+      const sel = e.selection[0];
+      const show =
+        sel instanceof ConflictItem &&
+        sel.conflict.target_oid !== sel.conflict.ours_oid;
+      vscode.commands.executeCommand('setContext', 'gitfix:conflictHasTakeTarget', show);
+    }),
+  );
 
   statusBar = new StatusBar();
   context.subscriptions.push(statusBar);
 
-  // 2. Register commands FIRST so they are always present regardless of MCP state.
+  // 2. CodeLens provider — register early, responds to merge state changes below.
+  const codeLensProvider = new ConflictCodeLensProvider();
+  context.subscriptions.push(codeLensProvider);
+  context.subscriptions.push(
+    vscode.languages.registerCodeLensProvider({ scheme: 'file' }, codeLensProvider),
+  );
+
+  // 3. Register commands FIRST so they are always present regardless of MCP state.
   // Commands guard on getMcpClient() at invoke time and surface a helpful error
   // when the MCP server is unavailable.
   context.subscriptions.push(
     ...registerResolveCommands(getMcpClient, treeProvider, () => detector!.currentState()),
     ...registerRefreshCommand(treeProvider, () => detector!.currentState()),
-    ...registerAuditRefCommand(getMcpClient, () => detector!.currentState()),
+    ...registerAuditRefCommand(getMcpClient, treeProvider, () => detector!.currentState(), context),
+    ...registerApplyCommand(getMcpClient, treeProvider, () => detector!.currentState()),
+    ...registerAbortCommand(getMcpClient, treeProvider, () => detector!.currentState()),
+    ...registerCodeLensCommands(getMcpClient, treeProvider, () => detector!.currentState()),
+    ...registerByokOnboardingCommand(),
   );
 
-  // 3. Boot MCP client (async; failure is non-fatal — commands will show an error at
+  // 4. Boot MCP client (async; failure is non-fatal — commands will show an error at
   // invoke time instead of leaving the extension entirely unregistered).
+  // Check BYOK before starting so we can pass enableByok to the subprocess.
+  const byokStatus = checkBYOK();
   try {
     mcpClient = new GfixMcpClient(gfixPath);
-    await mcpClient.start();
+    await mcpClient.start({ enableByok: byokStatus.configured });
     log(`MCP client connected to ${gfixPath}`);
     treeProvider.setClient(mcpClient);
+
+    // 4a. Install vscode.lm sampling host and surface AI availability to CodeLens.
+    const provider = config.get<'host' | 'byok' | 'none'>('aiProvider', 'host');
+    let aiAvailable = false;
+    if (provider !== 'none') {
+      const raw = mcpClient.getRawClient();
+      if (raw && provider === 'host') {
+        const host = await installSamplingHost(raw);
+        aiAvailable = host.available;
+        if (!host.available && !byokStatus.configured) {
+          vscode.window.showInformationMessage(
+            'gitfix: no AI provider available. Configure one to enable "Resolve with AI".',
+            'Configure',
+          ).then((c) => {
+            if (c === 'Configure') vscode.commands.executeCommand('gitfix.configureAiProvider');
+          });
+        } else if (!host.available && byokStatus.configured) {
+          aiAvailable = true; // gfix subprocess handles BYOK transparently
+        }
+      } else if (provider === 'byok') {
+        aiAvailable = byokStatus.configured;
+      }
+    }
+    codeLensProvider.setAiAvailable(aiAvailable);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`MCP startup failed: ${msg}`);
@@ -69,10 +126,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // DO NOT return — the extension stays activated with commands available.
   }
 
-  // 4. Detect merge state and refresh tree on changes.
+  // 5. Detect merge state and refresh tree on changes.
   detector = new MergeStateDetector(async (state) => {
     log(`merge state changed: hasMerge=${state.hasMerge} repo=${state.repoPath ?? '(none)'}`);
     await vscode.commands.executeCommand('setContext', 'gitfix:hasMerge', state.hasMerge);
+    codeLensProvider.setMergeActive(state.hasMerge);
     if (state.hasMerge && state.repoPath && mcpClient) {
       await treeProvider!.refresh(state.repoPath);
       statusBar!.update(treeProvider!.conflictCount);
@@ -84,7 +142,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(detector);
   await detector.start();
 
-  // 5. Watch settings changes for gfixPath restart.
+  // 6. Watch settings changes for gfixPath restart.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (e.affectsConfiguration('gitfix.gfixPath')) {
