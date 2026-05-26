@@ -4,11 +4,18 @@ import type { MergeState } from '../git/detect';
 import { log, showOutputChannel } from '../log';
 
 export function registerAuditRefCommand(
-  client: GfixMcpClient,
+  getClient: () => GfixMcpClient | undefined,
   getState: () => MergeState,
 ): vscode.Disposable[] {
   return [
     vscode.commands.registerCommand('gitfix.showAuditRef', async () => {
+      const client = getClient();
+      if (!client) {
+        vscode.window.showErrorMessage(
+          'gitfix: MCP server not available. Install gfix or set gitfix.gfixPath.',
+        );
+        return;
+      }
       const state = getState();
       if (!state.hasMerge || !state.repoPath) {
         vscode.window.showInformationMessage('gitfix: no active merge.');

@@ -7,7 +7,7 @@ import type { ResolutionDecision } from '../mcp/types';
 import { log } from '../log';
 
 export function registerResolveCommands(
-  client: GfixMcpClient,
+  getClient: () => GfixMcpClient | undefined,
   tree: ConflictTreeProvider,
   getState: () => MergeState,
 ): vscode.Disposable[] {
@@ -23,17 +23,17 @@ export function registerResolveCommands(
     ),
     vscode.commands.registerCommand(
       'gitfix.resolveOurs',
-      (item?: ConflictItem) => resolve(client, tree, getState, item, { kind: 'ours' }),
+      (item?: ConflictItem) => resolve(getClient, tree, getState, item, { kind: 'ours' }),
     ),
     vscode.commands.registerCommand(
       'gitfix.resolveTheirs',
       (item?: ConflictItem) =>
-        resolve(client, tree, getState, item, { kind: 'theirs' }),
+        resolve(getClient, tree, getState, item, { kind: 'theirs' }),
     ),
     vscode.commands.registerCommand(
       'gitfix.resolveMergiraf',
       (item?: ConflictItem) =>
-        resolve(client, tree, getState, item, { kind: 'mergiraf' }),
+        resolve(getClient, tree, getState, item, { kind: 'mergiraf' }),
     ),
   ];
 }
@@ -47,12 +47,19 @@ function pickFirst(tree: ConflictTreeProvider): ConflictItem | undefined {
 }
 
 async function resolve(
-  client: GfixMcpClient,
+  getClient: () => GfixMcpClient | undefined,
   tree: ConflictTreeProvider,
   getState: () => MergeState,
   item: ConflictItem | undefined,
   decision: ResolutionDecision,
 ): Promise<void> {
+  const client = getClient();
+  if (!client) {
+    vscode.window.showErrorMessage(
+      'gitfix: MCP server not available. Install gfix or set gitfix.gfixPath.',
+    );
+    return;
+  }
   if (!item) {
     vscode.window.showWarningMessage(
       'gitfix: right-click a conflict in the tree to resolve.',
