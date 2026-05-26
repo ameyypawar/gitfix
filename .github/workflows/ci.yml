@@ -34,9 +34,10 @@ jobs:
           cache: 'npm'
       - name: Install gfix
         run: |
-          gh release download --repo ameyypawar/gitfix --pattern '*-linux-x64.tar.gz' --output gfix.tar.gz
+          gh release download --repo ameyypawar/gfix --pattern '*x86_64-unknown-linux-gnu.tar.gz' --output gfix.tar.gz
           tar -xzf gfix.tar.gz
           sudo mv gfix /usr/local/bin/
+          gfix --version
         env:
           GH_TOKEN: ${{ github.token }}
       - run: npm ci && npm run compile
