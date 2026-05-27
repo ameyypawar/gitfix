@@ -11,8 +11,52 @@ export function registerCodeLensCommands(
   tree: ConflictTreeProvider,
   getState: () => MergeState,
 ): vscode.Disposable[] {
+  /**
+   * Resolve the conflict for a given URI + lineIndex.
+   *
+   * Fix #9 (partial): when a file has multiple unresolved conflicts, use
+   * lineIndex to disambiguate. If lineIndex is unavailable or no conflict
+   * matches within the ±2-line tolerance (the gfix MCP wire type does not yet
+   * include first_line — tracked upstream as a follow-up), fall back to a
+   * quick-pick so the user can select the intended conflict manually.
+   */
+  async function pickConflict(
+    uri: vscode.Uri,
+    lineIndex: number,
+    state: ReturnType<typeof getState>,
+  ): Promise<import('../mcp/types').UnresolvedConflict | undefined> {
+    if (!state.repoPath) return undefined;
+    const relPath = path.relative(state.repoPath, uri.fsPath);
+    const all = tree.findAllUnresolvedByFile(relPath);
+    if (all.length === 0) {
+      vscode.window.showWarningMessage(
+        `gitfix: no unresolved conflict tracked for ${relPath}. Refresh the tree.`,
+      );
+      return undefined;
+    }
+    if (all.length === 1) return all[0];
+    // Multiple conflicts in the same file — try to match by lineIndex if the
+    // gfix wire type ever includes first_line; for now fall through to quick-pick.
+    // TODO: when gfix#XX adds first_line to UnresolvedConflict, enable the
+    //       match below and remove the quick-pick path.
+    //
+    // const byLine = all.find((c) => 'first_line' in c &&
+    //   Math.abs((c as any).first_line - lineIndex) <= 2);
+    // if (byLine) return byLine;
+    void lineIndex; // acknowledged but not used until gfix wire-type adds first_line
+    const picked = await vscode.window.showQuickPick(
+      all.map((c) => ({
+        label: `conflict_id: ${c.conflict_id}`,
+        description: `${relPath} — kind: ${c.kind}`,
+        conflict: c,
+      })),
+      { placeHolder: vscode.l10n.t('Multiple conflicts in this file — select one to resolve') },
+    );
+    return picked?.conflict;
+  }
+
   const handler = (kind: ResolutionDecision['kind']) =>
-    async (uri: vscode.Uri, _line: number) => {
+    async (uri: vscode.Uri, lineIndex: number) => {
       const client = getClient();
       if (!client) {
         vscode.window.showErrorMessage(vscode.l10n.t('gitfix: MCP server not available.'));
@@ -23,12 +67,8 @@ export function registerCodeLensCommands(
         vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no active merge.'));
         return;
       }
-      const relPath = path.relative(state.repoPath, uri.fsPath);
-      const conflict = tree.findUnresolvedByFile(relPath);
+      const conflict = await pickConflict(uri, lineIndex, state);
       if (!conflict) {
-        vscode.window.showWarningMessage(
-          `gitfix: no unresolved conflict tracked for ${relPath}. Refresh the tree.`,
-        );
         return;
       }
       const decision: ResolutionDecision =
@@ -52,15 +92,14 @@ export function registerCodeLensCommands(
     vscode.commands.registerCommand('gitfix.codelens.takeOurs', handler('ours')),
     vscode.commands.registerCommand('gitfix.codelens.takeTheirs', handler('theirs')),
     vscode.commands.registerCommand('gitfix.codelens.runMergiraf', handler('mergiraf')),
-    vscode.commands.registerCommand('gitfix.codelens.resolveWithAi', async (uri: vscode.Uri, _line: number) => {
+    vscode.commands.registerCommand('gitfix.codelens.resolveWithAi', async (uri: vscode.Uri, lineIndex: number) => {
       // Two-step: 1) call conflict_get with include_ai_suggestion=true to cache the suggestion,
       // 2) then call conflict_resolve with kind='ai-suggestion'. Per the gfix MCP contract,
       // 'ai-suggestion' is rejected unless a prior conflict_get cached one.
       const client = getClient();
       const state = getState();
       if (!client || !state.repoPath || !tree.mergeId) return;
-      const relPath = path.relative(state.repoPath, uri.fsPath);
-      const conflict = tree.findUnresolvedByFile(relPath);
+      const conflict = await pickConflict(uri, lineIndex, state);
       if (!conflict) return;
       try {
         await vscode.window.withProgress(

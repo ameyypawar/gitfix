@@ -25,6 +25,18 @@ The `gfix` CLI must be installed and accessible from your PATH.
 
 [Install gfix](https://gfix.space)
 
+## Compatibility
+
+| gitfix extension | gfix CLI (minimum) | gfix CLI (recommended) |
+|---|---|---|
+| 1.0.x | 0.1.0-alpha.3 | latest alpha |
+| 0.99.x | 0.1.0-alpha.3 | 0.1.0-alpha.3 |
+| 0.2.0-beta | 0.1.0-alpha.2 | 0.1.0-alpha.2 |
+| 0.1.0-alpha | 0.1.0-alpha.1 | 0.1.0-alpha.1 |
+
+> **Why does the extension version (1.0) differ from the CLI version (0.1)?**
+> The extension is the user-facing surface and reached feature-complete first. The CLI is the substrate engine; we keep it on alpha until the merge-engine API itself is publicly committed-to. Both ship from the same release cadence and are tested together in CI.
+
 ## Quick Start
 
 Run **Get Started with gitfix** from the Command Palette to open the interactive walkthrough.
@@ -75,17 +87,7 @@ gitfix spawns `gfix mcp` as a subprocess and communicates over stdio using the M
 
 ## Privacy
 
-**Telemetry is off by default.** When opted in (`gitfix.telemetry.enabled: true`), gitfix sends anonymized usage events. Events are strictly filtered:
-
-| Event | Properties collected |
-|---|---|
-| `extension.activated` | VS Code version, extension version, gfix version, LM available (bool), BYOK configured (bool) |
-| `merge.preview` | Strategy, substrate, conflict counts |
-| `conflict.resolved` | Resolution method (`ours`/`theirs`/`mergiraf`/`ai-suggestion`/`take-target`/`manual`), source (`codelens`/`treeview`/`batch`) |
-| `merge.applied` | Branch protected (bool), conflict count, duration |
-| `extension.error` | Error class name only |
-
-**Never collected:** file paths, branch names, conflict content, error message text, user identity.
+**Telemetry is off by default and currently has no live transport.** When opted in (`gitfix.telemetry.enabled: true`), gitfix logs anonymized events to the gitfix Output channel only. No data leaves your machine in v1.0. A live transport will be wired in a future release with explicit version-note disclosure.
 
 Telemetry is automatically disabled when VS Code's global telemetry setting is off.
 

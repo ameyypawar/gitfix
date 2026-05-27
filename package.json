@@ -2,7 +2,7 @@
   "name": "gitfix",
   "displayName": "gitfix — Merge Conflict Inspector",
   "description": "Workspace-wide merge conflict inspector and companion to VS Code's built-in merge editor. Powered by gfix MCP.",
-  "version": "0.99.0",
+  "version": "1.0.0-rc.1",
   "publisher": "ameyypawar",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -19,7 +19,9 @@
     "node": ">=18"
   },
   "categories": ["SCM Providers", "Linters"],
-  "keywords": ["merge", "conflict", "git", "mergiraf", "mcp", "gitfix", "vscode-merge", "conflict-resolution", "rerere"],
+  "keywords": ["merge", "conflict", "git", "mergiraf", "mcp", "gitfix", "vscode-merge", "conflict-resolution", "rerere", "ai-merge", "merge-conflict", "merge-driver"],
+  "qna": "https://github.com/ameyypawar/gitfix/discussions",
+  "sponsor": { "url": "https://gfix.space" },
   "l10n": "./l10n",
   "activationEvents": [
     "onStartupFinished",
@@ -409,17 +411,12 @@
     "test:compile": "tsc -p ./",
     "test": "node ./out/test/runTest.js",
     "test:integration": "node ./out/test/runIntegrationTest.js",
-    "vsce:package": "vsce package --pre-release",
-    "vsce:publish": "vsce publish --pre-release",
-    "ovsx:publish": "ovsx publish --pre-release"
+    "vsce:package": "vsce package",
+    "vsce:publish": "vsce publish",
+    "ovsx:publish": "ovsx publish"
   },
   "dependencies": {
-    "@microsoft/applicationinsights-analytics-js": "^3.4.1",
-    "@microsoft/applicationinsights-channel-js": "^3.4.1",
-    "@microsoft/applicationinsights-common": "^3.4.1",
-    "@microsoft/applicationinsights-core-js": "^3.4.1",
-    "@modelcontextprotocol/sdk": "^1.0.0",
-    "@vscode/extension-telemetry": "^0.9.9"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",

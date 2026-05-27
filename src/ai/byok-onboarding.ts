@@ -93,19 +93,27 @@ async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
   if (fs.existsSync(KEYS_TOML_PATH)) {
     existing = fs.readFileSync(KEYS_TOML_PATH, 'utf8');
   }
+  // Fix #4: the original code had an early `return` inside the loop, which
+  // skipped any remaining entries after the first key-replace. Each key is now
+  // processed independently: in-place replacements accumulate in `current`,
+  // new keys accumulate in `lines`, and a single write happens at the end.
+  let current = existing;
   const lines: string[] = [];
-  if (existing.trim()) lines.push(existing.trimEnd());
+  if (current.trim()) lines.push(current.trimEnd());
   for (const [k, v] of Object.entries(entries)) {
-    if (new RegExp(`^${k}\\s*=`, 'm').test(existing)) {
-      // Replace existing key in-place
-      const updated = existing.replace(
+    const escaped = v.replace(/"/g, '\\"');
+    if (new RegExp(`^${k}\\s*=`, 'm').test(current)) {
+      // Replace existing key in-place — update `current` so subsequent
+      // iterations see the already-replaced content.
+      current = current.replace(
         new RegExp(`^${k}\\s*=.*$`, 'm'),
-        `${k} = "${v.replace(/"/g, '\\"')}"`,
+        `${k} = "${escaped}"`,
       );
-      fs.writeFileSync(KEYS_TOML_PATH, updated, { mode: 0o600 });
-      return;
+      // Refresh lines[0] (the existing-content slot) with the updated text.
+      if (lines.length > 0) lines[0] = current.trimEnd();
+    } else {
+      lines.push(`${k} = "${escaped}"`);
     }
-    lines.push(`${k} = "${v.replace(/"/g, '\\"')}"`);
   }
   fs.writeFileSync(KEYS_TOML_PATH, lines.join('\n') + '\n', { mode: 0o600 });
 }

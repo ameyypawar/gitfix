@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.1] - 2026-05-27
+
+### Changed
+- Bump version to 1.0.0-rc.1; telemetry transport stubbed (logs to Output channel, no external calls).
+
+### Fixed
+- #4 byok-onboarding: `ensureKeysToml` no longer skips remaining entries after the first key-replace.
+- #5 sampling-host: `installSamplingHost` installs the sampling handler regardless of model availability at activation time; `pickModel()` is called fresh per request.
+- #6 audit-webview: `retainContextWhenHidden` flipped to `false`; re-render on reveal eliminates stale DOM memory.
+- #7 mcp/types: `ResolvedVia` union widened to include `ours`, `theirs`, `take-target`, `manual`, `ai-suggestion`.
+- #8 CHANGELOG: link refs added for all versions.
+- #9 codelens: lineIndex used for conflict disambiguation; quick-pick fallback when file has >1 conflict.
+- #10 audit-webview: `started_at` falls back to first decision timestamp when not yet emitted by gfix MCP.
+
 ## [0.99.0] - 2026-05-26
 
 ### Added
@@ -90,5 +104,8 @@ Verified publisher application submitted to VS Code Marketplace. Turnaround is t
 - CI workflow (lint, package, test on Ubuntu with xvfb)
 - Release workflow (publish to VS Code Marketplace and Open VSX on tag)
 
-[Unreleased]: https://github.com/ameyypawar/gitfix/compare/v0.1.0-alpha.1...HEAD
+[Unreleased]: https://github.com/ameyypawar/gitfix/compare/v1.0.0-rc.1...HEAD
+[1.0.0-rc.1]: https://github.com/ameyypawar/gitfix/compare/v0.99.0...v1.0.0-rc.1
+[0.99.0]: https://github.com/ameyypawar/gitfix/compare/v0.2.0-beta...v0.99.0
+[0.2.0-beta]: https://github.com/ameyypawar/gitfix/compare/v0.1.0-alpha.1...v0.2.0-beta
 [0.1.0-alpha.1]: https://github.com/ameyypawar/gitfix/releases/tag/v0.1.0-alpha.1

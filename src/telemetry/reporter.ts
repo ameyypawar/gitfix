@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import TelemetryReporter from '@vscode/extension-telemetry';
 import { log } from '../log';
 
-// Empty string = no-op transport (logs to output channel only). v1.1 will set this
-// from an env-var at build time once we decide on a backend.
-const APP_INSIGHTS_KEY = '';
+// Phase 4 / v1.0: transport stubbed — no @vscode/extension-telemetry dep.
+// When opted in, events are logged to the gitfix Output channel only.
+// A live transport will be wired in v1.1 with a real backend key + privacy
+// disclosure. The schema (EventName + GitfixTelemetry shape) stays identical
+// so all existing call sites continue to compile without changes.
 
 export type EventName =
   | 'extension.activated'
@@ -14,47 +15,33 @@ export type EventName =
   | 'extension.error';
 
 export class GitfixTelemetry {
-  private reporter?: TelemetryReporter;
   private enabled = false;
 
   constructor(private extensionVersion: string) {}
 
   init(context: vscode.ExtensionContext): void {
-    // Respect both VS Code-wide and our own setting.
     this.refreshEnabled();
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration('gitfix.telemetry.enabled')) this.refreshEnabled();
     }, null, context.subscriptions);
     vscode.env.onDidChangeTelemetryEnabled?.(() => this.refreshEnabled(), null, context.subscriptions);
-    if (APP_INSIGHTS_KEY) {
-      this.reporter = new TelemetryReporter(APP_INSIGHTS_KEY);
-      context.subscriptions.push(this.reporter);
-    }
   }
 
   private refreshEnabled(): void {
     const ours = vscode.workspace.getConfiguration('gitfix').get<boolean>('telemetry.enabled', false);
-    const vscodeWide = vscode.env.isTelemetryEnabled;
-    this.enabled = ours && vscodeWide;
+    this.enabled = ours && vscode.env.isTelemetryEnabled;
   }
 
   send(event: EventName, properties: Record<string, string> = {}, measurements: Record<string, number> = {}): void {
     if (!this.enabled) return;
-    // Always include version baseline.
     const props = { extensionVersion: this.extensionVersion, ...sanitize(properties) };
-    if (this.reporter) {
-      this.reporter.sendTelemetryEvent(event, props, measurements);
-    } else {
-      // Stubbed transport: log only. Useful for development.
-      log(`[telemetry] ${event} ${JSON.stringify(props)} ${JSON.stringify(measurements)}`);
-    }
+    log(`[telemetry] ${event} ${JSON.stringify(props)} ${JSON.stringify(measurements)}`);
   }
 }
 
 /**
  * Strip any property value that looks like a file path, URL, email address,
- * or is excessively long. This is a defense-in-depth measure; callers are
- * responsible for not passing PII in the first place.
+ * or is excessively long. Defense-in-depth; callers must not pass PII.
  */
 function sanitize(props: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};

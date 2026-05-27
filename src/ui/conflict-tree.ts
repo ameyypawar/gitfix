@@ -168,6 +168,17 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
     return undefined;
   }
 
+  /** Return ALL unresolved conflicts matching the given relative file path. */
+  findAllUnresolvedByFile(file: string): UnresolvedConflict[] {
+    const results: UnresolvedConflict[] = [];
+    for (const plan of this.plans.values()) {
+      for (const u of plan.unresolved) {
+        if (u.file === file) results.push(u);
+      }
+    }
+    return results;
+  }
+
   /** Find unresolved conflict by relative file path within a specific repo. */
   findUnresolvedByFileInRepo(repoPath: string, file: string): UnresolvedConflict | undefined {
     return this.plans.get(repoPath)?.unresolved.find((u) => u.file === file);

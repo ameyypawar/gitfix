@@ -14,7 +14,26 @@ import { checkBYOK, registerByokOnboardingCommand } from './ai/byok-onboarding';
 import { MergeStateDetector } from './git/detect';
 import { ConflictItem } from './ui/conflict-item';
 import { GitfixTelemetry } from './telemetry/reporter';
+import { semverGte } from './util/semver';
 import { log, showOutputChannel } from './log';
+
+/** Minimum gfix CLI version required for full functionality. */
+const REQUIRED_GFIX_MIN = '0.1.0-alpha.3';
+
+/** Check the installed gfix binary version against the floor. */
+async function gfixVersionOk(gfixPath: string): Promise<{ ok: boolean; actual: string }> {
+  try {
+    const { exec } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const run = promisify(exec);
+    const { stdout } = await run(`${gfixPath} --version`, { timeout: 5000 });
+    const m = stdout.match(/(\d+\.\d+\.\d+(?:-[\w.]+)?)/);
+    const actual = m?.[1] ?? 'unknown';
+    return { ok: semverGte(actual, REQUIRED_GFIX_MIN), actual };
+  } catch {
+    return { ok: false, actual: 'not-found' };
+  }
+}
 
 let mcpClient: GfixMcpClient | undefined;
 let detector: MergeStateDetector | undefined;
@@ -109,6 +128,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     mcpClient = new GfixMcpClient(gfixPath);
     await mcpClient.start({ enableByok: byokStatus.configured });
     log(`MCP client connected to ${gfixPath}`);
+
+    // Check gfix CLI version floor (non-blocking warning only).
+    const { ok: versionOk, actual: actualVersion } = await gfixVersionOk(gfixPath);
+    if (!versionOk && actualVersion !== 'not-found') {
+      vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          'gitfix needs gfix {0} or newer (you have {1}). Update for best results.',
+          REQUIRED_GFIX_MIN,
+          actualVersion,
+        ),
+        'Update gfix',
+      ).then((c) => {
+        if (c === 'Update gfix') {
+          vscode.env.openExternal(vscode.Uri.parse('https://gfix.space/install'));
+        }
+      });
+    }
     treeProvider.setClient(mcpClient);
 
     // 4a. Install vscode.lm sampling host and surface AI availability to CodeLens.

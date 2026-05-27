@@ -4,31 +4,55 @@ import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { log } from '../log';
 
 /**
+ * Select the best available vscode.lm model honoring the given hints.
+ * Called fresh on every sampling request (fix #5 — no caching to avoid TOCTOU
+ * when Copilot installs after the extension activates).
+ */
+export async function pickModel(
+  hints: string[] = [],
+): Promise<vscode.LanguageModelChat | undefined> {
+  let candidates: vscode.LanguageModelChat[] = [];
+  try {
+    candidates = await vscode.lm.selectChatModels({});
+  } catch (err) {
+    log(`vscode.lm.selectChatModels failed: ${err instanceof Error ? err.message : String(err)}`);
+    return undefined;
+  }
+  return (
+    candidates.find((m) => hints.some((h) => m.id.includes(h) || m.name.includes(h))) ??
+    candidates[0]
+  );
+}
+
+/**
  * Wires up the MCP `sampling/createMessage` handler on the given client.
  * Routes each request to vscode.lm and returns the model's response.
  *
- * The MCP SDK exposes setRequestHandler on the underlying Server-side, but for
- * the *client* side we use `setNotificationHandler`-like semantics via the
- * server's request schemas. The @modelcontextprotocol/sdk v1.x supports
+ * Fix #5: the handler is always installed regardless of whether models are
+ * available at activation time. Each request calls pickModel() fresh, so
+ * Copilot (or another LM provider) that installs after activation is picked
+ * up automatically without requiring a window reload.
+ *
+ * The @modelcontextprotocol/sdk v1.x supports
  * `client.setRequestHandler(schema, handler)`.
  */
 export async function installSamplingHost(client: Client): Promise<{
   available: boolean;
   modelLabel?: string;
 }> {
-  // Detect whether vscode.lm has any models available right now.
-  let models: vscode.LanguageModelChat[] = [];
+  // Report initial availability for CodeLens / info-toast purposes, but do
+  // NOT gate handler installation on this check (fix #5).
+  let initialModels: vscode.LanguageModelChat[] = [];
   try {
-    models = await vscode.lm.selectChatModels({});
+    initialModels = await vscode.lm.selectChatModels({});
   } catch (err) {
-    log(`vscode.lm.selectChatModels failed: ${err instanceof Error ? err.message : String(err)}`);
+    log(`vscode.lm.selectChatModels (initial check) failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-  if (models.length === 0) {
-    log('vscode.lm reports zero models; sampling host inactive');
-    return { available: false };
+  if (initialModels.length === 0) {
+    log('vscode.lm reports zero models at activation; sampling handler still installed for late-arriving providers');
+  } else {
+    log(`vscode.lm host active: ${initialModels.length} model(s); preferring ${initialModels[0].name}`);
   }
-
-  log(`vscode.lm host active: ${models.length} model(s); preferring ${models[0].name}`);
 
   client.setRequestHandler(CreateMessageRequestSchema, async (request) => {
     const { messages, systemPrompt, maxTokens, modelPreferences } =
@@ -68,11 +92,9 @@ export async function installSamplingHost(client: Client): Promise<{
     }
 
     // Pick a model honoring modelPreferences.hints[].name if provided.
-    const hints = modelPreferences?.hints?.map((h) => h.name).filter(Boolean) ?? [];
-    const candidates = await vscode.lm.selectChatModels({});
-    const picked =
-      candidates.find((m) => hints.some((h) => m.id.includes(h!) || m.name.includes(h!))) ??
-      candidates[0];
+    // pickModel() calls selectChatModels fresh each time (fix #5).
+    const hints = modelPreferences?.hints?.map((h) => h.name).filter((h): h is string => typeof h === 'string') ?? [];
+    const picked = await pickModel(hints);
 
     if (!picked) {
       throw new Error('no vscode.lm model available');
@@ -107,5 +129,8 @@ export async function installSamplingHost(client: Client): Promise<{
     }
   });
 
-  return { available: true, modelLabel: models[0].name };
+  return {
+    available: initialModels.length > 0,
+    modelLabel: initialModels[0]?.name,
+  };
 }
