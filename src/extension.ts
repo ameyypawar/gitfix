@@ -108,6 +108,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return detector?.currentState() ?? { hasMerge: false, repoPath: undefined };
   }
 
+  // Multi-repo state getter — used by apply/abort/codelens to resolve the
+  // correct target repo via active editor position or QuickPick.
+  function getMultiState(): import('./workspace/multi-folder').MultiRepoState {
+    return detector?.currentMultiState() ?? { active: new Map(), anyActive: false };
+  }
+
   // 4. Register commands FIRST so they are always present regardless of MCP state.
   // Commands guard on getMcpClient() at invoke time and surface a helpful error
   // when the MCP server is unavailable.
@@ -115,9 +121,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ...registerResolveCommands(getMcpClient, treeProvider, getDetectorState),
     ...registerRefreshCommand(treeProvider, getDetectorState),
     ...registerAuditRefCommand(getMcpClient, treeProvider, getDetectorState, context),
-    ...registerApplyCommand(getMcpClient, treeProvider, getDetectorState),
-    ...registerAbortCommand(getMcpClient, treeProvider, getDetectorState),
-    ...registerCodeLensCommands(getMcpClient, treeProvider, getDetectorState),
+    ...registerApplyCommand(getMcpClient, treeProvider, getDetectorState, getMultiState),
+    ...registerAbortCommand(getMcpClient, treeProvider, getDetectorState, getMultiState),
+    ...registerCodeLensCommands(getMcpClient, treeProvider, getDetectorState, getMultiState),
     ...registerByokOnboardingCommand(),
     // Walkthrough command — opens the built-in walkthrough panel.
     vscode.commands.registerCommand('gitfix.openWalkthrough', () => {

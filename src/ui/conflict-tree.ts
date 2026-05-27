@@ -31,12 +31,20 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
     return this.plans.size > 0 ? [...this.plans.keys()][0] : undefined;
   }
 
-  /** Returns the merge_id for the first active repo (legacy compat). */
+  /**
+   * Returns the merge_id for the first active repo.
+   * @deprecated Use mergeIdForRepo(repoPath) for multi-repo correctness.
+   * Retained for single-repo callers and backward compat; new callers must pass
+   * a specific repoPath.
+   */
   get mergeId(): string | undefined {
     return this.plans.size > 0 ? [...this.plans.values()][0]?.merge_id : undefined;
   }
 
-  /** Returns the plan for the first active repo (legacy compat). */
+  /**
+   * Returns the plan for the first active repo.
+   * @deprecated Use planForRepo(repoPath) for multi-repo correctness.
+   */
   get currentPlan(): MergePlan | undefined {
     return this.plans.size > 0 ? [...this.plans.values()][0] : undefined;
   }
