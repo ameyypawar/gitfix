@@ -285,7 +285,8 @@
         "gitfix.gfixPath": {
           "type": "string",
           "default": "gfix",
-          "description": "Path to the gfix binary. Defaults to 'gfix' (resolved via PATH). Override with an absolute path if needed."
+          "scope": "machine",
+          "description": "Path to the gfix binary. Defaults to 'gfix' (resolved via PATH). Override with an absolute path if needed. Machine-scoped: cannot be set per-workspace to prevent workspace-trust escalation."
         },
         "gitfix.activateOnGitMerge": {
           "type": "boolean",

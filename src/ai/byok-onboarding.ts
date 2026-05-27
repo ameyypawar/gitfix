@@ -78,7 +78,7 @@ export function registerByokOnboardingCommand(): vscode.Disposable[] {
   ];
 }
 
-async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
+export async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
   const dir = path.dirname(KEYS_TOML_PATH);
   fs.mkdirSync(dir, { recursive: true });
   // Tighten perms on the gitfix/ dir itself to 0o700. We deliberately do NOT
@@ -105,9 +105,13 @@ async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
     if (new RegExp(`^${k}\\s*=`, 'm').test(current)) {
       // Replace existing key in-place — update `current` so subsequent
       // iterations see the already-replaced content.
+      // Use the function form of String.replace to prevent `$&`, `$1`, etc.
+      // in the API key value from being interpreted as replacement patterns
+      // (fixes #18: keys containing `$` were silently corrupted).
+      const replacement = `${k} = "${escaped}"`;
       current = current.replace(
         new RegExp(`^${k}\\s*=.*$`, 'm'),
-        `${k} = "${escaped}"`,
+        () => replacement,
       );
       // Refresh lines[0] (the existing-content slot) with the updated text.
       if (lines.length > 0) lines[0] = current.trimEnd();
