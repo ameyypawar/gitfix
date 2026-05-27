@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-rc.1] - 2026-05-27
+## [1.0.0] - 2026-05-27
 
 ### Changed
-- Bump version to 1.0.0-rc.1; telemetry transport stubbed (logs to Output channel, no external calls).
+- Bump version to 1.0.0; telemetry transport stubbed (logs to Output channel, no external calls).
 
 ### Fixed
 - #4 byok-onboarding: `ensureKeysToml` no longer skips remaining entries after the first key-replace.
@@ -104,8 +104,8 @@ Verified publisher application submitted to VS Code Marketplace. Turnaround is t
 - CI workflow (lint, package, test on Ubuntu with xvfb)
 - Release workflow (publish to VS Code Marketplace and Open VSX on tag)
 
-[Unreleased]: https://github.com/ameyypawar/gitfix/compare/v1.0.0-rc.1...HEAD
-[1.0.0-rc.1]: https://github.com/ameyypawar/gitfix/compare/v0.99.0...v1.0.0-rc.1
+[Unreleased]: https://github.com/ameyypawar/gitfix/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ameyypawar/gitfix/compare/v0.99.0...v1.0.0
 [0.99.0]: https://github.com/ameyypawar/gitfix/compare/v0.2.0-beta...v0.99.0
 [0.2.0-beta]: https://github.com/ameyypawar/gitfix/compare/v0.1.0-alpha.1...v0.2.0-beta
 [0.1.0-alpha.1]: https://github.com/ameyypawar/gitfix/releases/tag/v0.1.0-alpha.1
