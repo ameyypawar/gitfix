@@ -6,7 +6,7 @@
 
 Workspace-wide merge conflict inspector for VS Code. Companion to the built-in merge editor, powered by [`gfix`](https://gfix.space).
 
-> **Screenshot placeholder** — replace with `media/hero.png` before GA listing.
+<p align="center"><img src="media/hero.png" alt="gitfix" width="200" /></p>
 
 ## Features
 
