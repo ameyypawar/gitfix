@@ -1,12 +1,14 @@
 # gitfix — Merge Conflict Inspector
 
+<p align="center">
+  <img src="media/hero.png" alt="gitfix" width="200" />
+</p>
+
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/ameyypawar.gitfix?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=ameyypawar.gitfix)
 [![Open VSX](https://img.shields.io/open-vsx/v/ameyypawar/gitfix?label=Open%20VSX)](https://open-vsx.org/extension/ameyypawar/gitfix)
 [![CI](https://github.com/ameyypawar/gitfix/actions/workflows/ci.yml/badge.svg)](https://github.com/ameyypawar/gitfix/actions/workflows/ci.yml)
 
 Workspace-wide merge conflict inspector for VS Code. Companion to the built-in merge editor, powered by [`gfix`](https://gfix.space).
-
-> **Screenshot placeholder** — replace with `media/hero.png` before GA listing.
 
 ## Features
 
