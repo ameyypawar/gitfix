@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-rc.1] - 2026-05-26
+## [0.99.0] - 2026-05-26
 
 ### Added
 - Multi-folder workspace support: all workspace folders with an active merge are shown
