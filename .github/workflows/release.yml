@@ -39,6 +39,11 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: npx vsce publish ${{ steps.prerelease.outputs.flag }}
 
+      - name: Ensure Open VSX namespace exists
+        run: npx ovsx create-namespace ameyypawar -p "$OVSX_PAT" || true
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
       - name: Publish to Open VSX
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
