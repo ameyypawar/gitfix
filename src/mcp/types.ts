@@ -12,9 +12,23 @@ export interface UnresolvedConflict {
   theirs_source: string;
 }
 
+// Fix #7: widen the union to cover all values the gfix server can emit.
+// Previously only 'mergiraf' | 'text' | 'rerere' were typed; the server can
+// return 'ours', 'theirs', 'take-target', 'manual', and 'ai-suggestion' as
+// well. Existing `if (entry.via === 'rerere')` guards remain correct.
+export type ResolvedVia =
+  | 'mergiraf'
+  | 'text'
+  | 'rerere'
+  | 'ours'
+  | 'theirs'
+  | 'take-target'
+  | 'manual'
+  | 'ai-suggestion';
+
 export interface ResolvedEntry {
   file: string;
-  via: 'mergiraf' | 'text' | 'rerere';
+  via: ResolvedVia;
   ours_oid: string;
   theirs_oid: string;
   base_oid: string;

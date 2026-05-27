@@ -138,8 +138,8 @@ function render(refs: AuditRef[]): string {
       <td><code>${esc(r.oid.slice(0, 8))}</code></td>
       <td>${esc(r.subject)}</td>
       <td>
-        <button onclick="msg('open','${esc(r.mergeId)}')">View</button>
-        <button onclick="msg('delete','${esc(r.mergeId)}')">Delete</button>
+        <button class="action-btn" data-action="open" data-id="${esc(r.mergeId)}">View</button>
+        <button class="action-btn" data-action="delete" data-id="${esc(r.mergeId)}">Delete</button>
       </td>
     </tr>`).join('');
 
@@ -164,7 +164,7 @@ function render(refs: AuditRef[]): string {
 <body>
   <h1>Audit Refs</h1>
   <div class="toolbar">
-    <button onclick="sharePush()">Copy push command for selected</button>
+    <button id="share-push-btn">Copy push command for selected</button>
   </div>
   <table>
     <thead>
@@ -180,14 +180,18 @@ function render(refs: AuditRef[]): string {
   </table>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    function msg(type, mergeId) {
-      vscode.postMessage({ type, mergeId });
-    }
-    function sharePush() {
-      const selected = [...document.querySelectorAll('.sel:checked')].map(el => el.dataset.id);
+    // Use data-attributes + event delegation instead of inline onclick handlers
+    // to prevent JS context breakout via injected mergeId values (fixes #22).
+    document.querySelectorAll('.action-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        vscode.postMessage({ type: btn.dataset.action, mergeId: btn.dataset.id });
+      });
+    });
+    document.getElementById('share-push-btn').addEventListener('click', function() {
+      const selected = Array.prototype.slice.call(document.querySelectorAll('.sel:checked')).map(function(el) { return el.dataset.id; });
       if (!selected.length) return;
-      vscode.postMessage({ type: 'sharePush', selected });
-    }
+      vscode.postMessage({ type: 'sharePush', selected: selected });
+    });
   </script>
 </body>
 </html>`;

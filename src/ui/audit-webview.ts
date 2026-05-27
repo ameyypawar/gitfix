@@ -17,7 +17,11 @@ export class AuditPanel {
       'gitfix.audit',
       'gitfix Audit',
       vscode.ViewColumn.Beside,
-      { enableScripts: true, retainContextWhenHidden: true },
+      // Fix #6: retainContextWhenHidden was true, keeping stale DOM in memory
+      // even when the panel is hidden. The audit is a one-off view; re-render
+      // on reveal() from the stored instance field is cheaper than the memory
+      // overhead of keeping a hidden webview alive.
+      { enableScripts: true, retainContextWhenHidden: false },
     );
     const instance = new AuditPanel(panel, audit);
     AuditPanel.instance = instance;
@@ -94,7 +98,12 @@ export class AuditPanel {
     <dt>Sources</dt><dd>${a.metadata.sources.map((s) => `<code>${esc(s)}</code>`).join(', ')}</dd>
     <dt>Strategy</dt><dd>${esc(a.metadata.strategy)}</dd>
     <dt>Substrate</dt><dd>${esc(a.metadata.substrate)}</dd>
-    <dt>Started</dt><dd>${esc(a.metadata.started_at)}</dd>
+    <dt>Started</dt><dd>${esc(
+      // Fix #10: started_at is not yet emitted by gfix MCP (tracked upstream
+      // as gfix#3 — audit_metadata block missing). Fall back to the timestamp
+      // of the first recorded decision until the server-side fix lands.
+      a.metadata.started_at || a.decisions[0]?.at || 'unknown',
+    )}</dd>
     ${a.metadata.applied_at ? `<dt>Applied</dt><dd>${esc(a.metadata.applied_at)}</dd>` : ''}
     ${a.metadata.commit_oid ? `<dt>Commit</dt><dd><code>${esc(a.metadata.commit_oid)}</code></dd>` : ''}
   </dl>

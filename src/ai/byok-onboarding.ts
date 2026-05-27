@@ -78,7 +78,7 @@ export function registerByokOnboardingCommand(): vscode.Disposable[] {
   ];
 }
 
-async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
+export async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
   const dir = path.dirname(KEYS_TOML_PATH);
   fs.mkdirSync(dir, { recursive: true });
   // Tighten perms on the gitfix/ dir itself to 0o700. We deliberately do NOT
@@ -93,19 +93,31 @@ async function ensureKeysToml(entries: Record<string, string>): Promise<void> {
   if (fs.existsSync(KEYS_TOML_PATH)) {
     existing = fs.readFileSync(KEYS_TOML_PATH, 'utf8');
   }
+  // Fix #4: the original code had an early `return` inside the loop, which
+  // skipped any remaining entries after the first key-replace. Each key is now
+  // processed independently: in-place replacements accumulate in `current`,
+  // new keys accumulate in `lines`, and a single write happens at the end.
+  let current = existing;
   const lines: string[] = [];
-  if (existing.trim()) lines.push(existing.trimEnd());
+  if (current.trim()) lines.push(current.trimEnd());
   for (const [k, v] of Object.entries(entries)) {
-    if (new RegExp(`^${k}\\s*=`, 'm').test(existing)) {
-      // Replace existing key in-place
-      const updated = existing.replace(
+    const escaped = v.replace(/"/g, '\\"');
+    if (new RegExp(`^${k}\\s*=`, 'm').test(current)) {
+      // Replace existing key in-place — update `current` so subsequent
+      // iterations see the already-replaced content.
+      // Use the function form of String.replace to prevent `$&`, `$1`, etc.
+      // in the API key value from being interpreted as replacement patterns
+      // (fixes #18: keys containing `$` were silently corrupted).
+      const replacement = `${k} = "${escaped}"`;
+      current = current.replace(
         new RegExp(`^${k}\\s*=.*$`, 'm'),
-        `${k} = "${v.replace(/"/g, '\\"')}"`,
+        () => replacement,
       );
-      fs.writeFileSync(KEYS_TOML_PATH, updated, { mode: 0o600 });
-      return;
+      // Refresh lines[0] (the existing-content slot) with the updated text.
+      if (lines.length > 0) lines[0] = current.trimEnd();
+    } else {
+      lines.push(`${k} = "${escaped}"`);
     }
-    lines.push(`${k} = "${v.replace(/"/g, '\\"')}"`);
   }
   fs.writeFileSync(KEYS_TOML_PATH, lines.join('\n') + '\n', { mode: 0o600 });
 }

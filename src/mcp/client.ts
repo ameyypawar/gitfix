@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import { log } from '../log';
 import type {
   MergePreviewResponse,
@@ -77,10 +78,11 @@ export class GfixMcpClient {
     strategy?: string;
     substrate?: string;
   }): Promise<MergePreviewResponse> {
+    // 30 s: may spawn mergiraf and AI analysis for large diffs.
     const res = await this.requireClient().callTool({
       name: 'gitfix_merge_preview',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 30_000 });
     return unwrapStructuredContent<MergePreviewResponse>(res as CallToolResult, 'gitfix_merge_preview');
   }
 
@@ -88,10 +90,11 @@ export class GfixMcpClient {
     repo_path: string;
     merge_id: string;
   }): Promise<MergeStatusResponse> {
+    // 10 s: query only, no AI or subprocess involved.
     const res = await this.requireClient().callTool({
       name: 'gitfix_merge_status',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 10_000 });
     return unwrapStructuredContent<MergeStatusResponse>(res as CallToolResult, 'gitfix_merge_status');
   }
 
@@ -101,10 +104,11 @@ export class GfixMcpClient {
     conflict_id: string;
     include_ai_suggestion?: boolean;
   }): Promise<ConflictGetResponse> {
+    // 30 s: may invoke AI for suggestion caching.
     const res = await this.requireClient().callTool({
       name: 'gitfix_conflict_get',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 30_000 });
     return unwrapStructuredContent<ConflictGetResponse>(res as CallToolResult, 'gitfix_conflict_get');
   }
 
@@ -114,10 +118,11 @@ export class GfixMcpClient {
     conflict_id: string;
     resolution: ResolutionDecision;
   }): Promise<ConflictResolveResponse> {
+    // 30 s: may invoke AI if resolution kind is 'ai-suggestion'.
     const res = await this.requireClient().callTool({
       name: 'gitfix_conflict_resolve',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 30_000 });
     return unwrapStructuredContent<ConflictResolveResponse>(res as CallToolResult, 'gitfix_conflict_resolve');
   }
 
@@ -126,18 +131,20 @@ export class GfixMcpClient {
     merge_id: string;
     auto_approve?: boolean;
   }): Promise<{ merge_id: string; commit_oid: string; audit_ref: string }> {
+    // 30 s: writes the merge commit and audit ref.
     const res = await this.requireClient().callTool({
       name: 'gitfix_merge_apply',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 30_000 });
     return unwrapStructuredContent<{ merge_id: string; commit_oid: string; audit_ref: string }>(res as CallToolResult, 'gitfix_merge_apply');
   }
 
   async mergeAbort(args: { repo_path: string; merge_id: string }): Promise<{ merge_id: string; aborted: boolean }> {
+    // 10 s: abort is a quick git reset operation.
     const res = await this.requireClient().callTool({
       name: 'gitfix_merge_abort',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 10_000 });
     return unwrapStructuredContent<{ merge_id: string; aborted: boolean }>(res as CallToolResult, 'gitfix_merge_abort');
   }
 
@@ -146,10 +153,11 @@ export class GfixMcpClient {
     merge_id: string;
     decisions: Array<{ conflict_id: string; resolution: ResolutionDecision }>;
   }): Promise<{ merge_id: string; resolved: number; failed: number; remaining_unresolved: number }> {
+    // 60 s: resolves multiple conflicts, each potentially invoking AI.
     const res = await this.requireClient().callTool({
       name: 'gitfix_conflict_resolve_batch',
       arguments: args,
-    });
+    }, CallToolResultSchema, { timeout: 60_000 });
     return unwrapStructuredContent<{ merge_id: string; resolved: number; failed: number; remaining_unresolved: number }>(res as CallToolResult, 'gitfix_conflict_resolve_batch');
   }
 }

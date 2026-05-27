@@ -49,23 +49,38 @@ export function registerResolveCommands(
           return;
         }
         const client = getClient();
-        const state = getState();
-        if (!client || !state.repoPath || !tree.mergeId) return;
-        try {
-          const result = await client.conflictResolveBatch({
-            repo_path: state.repoPath,
-            merge_id: tree.mergeId,
-            decisions: items.map((it) => ({
-              conflict_id: it.conflict.conflict_id,
-              resolution: { kind: 'mergiraf' },
-            })),
-          });
-          vscode.window.showInformationMessage(
-            `gitfix: resolved ${result.resolved}, failed ${result.failed}, remaining ${result.remaining_unresolved}.`,
-          );
-          await tree.refresh(state.repoPath);
-        } catch (err) {
-          vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+        if (!client) return;
+
+        // Group items by repo so each batch call targets a single repo.
+        // For the common case (one repo) this is a single call; for multi-repo
+        // selections it issues one call per repo (fixes #28: used tree.mergeId
+        // which was first-repo-wins regardless of the selected items).
+        const byRepo = new Map<string, ConflictItem[]>();
+        for (const it of items) {
+          const list = byRepo.get(it.repoPath) ?? [];
+          list.push(it);
+          byRepo.set(it.repoPath, list);
+        }
+
+        for (const [repoPath, repoItems] of byRepo) {
+          const mergeId = tree.mergeIdForRepo(repoPath);
+          if (!mergeId) continue;
+          try {
+            const result = await client.conflictResolveBatch({
+              repo_path: repoPath,
+              merge_id: mergeId,
+              decisions: repoItems.map((it) => ({
+                conflict_id: it.conflict.conflict_id,
+                resolution: { kind: 'mergiraf' },
+              })),
+            });
+            vscode.window.showInformationMessage(
+              `gitfix: resolved ${result.resolved}, failed ${result.failed}, remaining ${result.remaining_unresolved}.`,
+            );
+            await tree.refresh(repoPath);
+          } catch (err) {
+            vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+          }
         }
       },
     ),
@@ -100,11 +115,23 @@ async function resolve(
     );
     return;
   }
-  const state = getState();
-  if (!state.hasMerge || !state.repoPath || !tree.mergeId) {
-    vscode.window.showErrorMessage(vscode.l10n.t('gitfix: no active merge.'));
-    return;
+
+  // Multi-repo correctness (#28): for tree-item-invoked resolve commands, the
+  // ConflictItem carries its own repoPath — use that to look up the correct
+  // merge_id rather than defaulting to tree.mergeId (first-repo-wins).
+  const repoPath = item.repoPath;
+  const mergeId = tree.mergeIdForRepo(repoPath);
+  if (!mergeId) {
+    // Fallback: check legacy single-repo state
+    const state = getState();
+    if (!state.hasMerge || !state.repoPath || !tree.mergeId) {
+      vscode.window.showErrorMessage(vscode.l10n.t('gitfix: no active merge.'));
+      return;
+    }
   }
+
+  const effectiveMergeId = mergeId ?? tree.mergeId!;
+  const effectiveRepoPath = mergeId ? repoPath : getState().repoPath!;
 
   try {
     await vscode.window.withProgress(
@@ -115,8 +142,8 @@ async function resolve(
       },
       async () => {
         const result = await client.conflictResolve({
-          repo_path: state.repoPath!,
-          merge_id: tree.mergeId!,
+          repo_path: effectiveRepoPath,
+          merge_id: effectiveMergeId,
           conflict_id: item.conflict.conflict_id,
           resolution: decision,
         });
@@ -125,7 +152,7 @@ async function resolve(
         );
       },
     );
-    await tree.refresh(state.repoPath);
+    await tree.refresh(effectiveRepoPath);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`resolve failed: ${msg}`);

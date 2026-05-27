@@ -14,7 +14,28 @@ import { checkBYOK, registerByokOnboardingCommand } from './ai/byok-onboarding';
 import { MergeStateDetector } from './git/detect';
 import { ConflictItem } from './ui/conflict-item';
 import { GitfixTelemetry } from './telemetry/reporter';
+import { semverGte } from './util/semver';
 import { log, showOutputChannel } from './log';
+
+/** Minimum gfix CLI version required for full functionality. */
+const REQUIRED_GFIX_MIN = '0.1.0-alpha.3';
+
+/** Check the installed gfix binary version against the floor. */
+async function gfixVersionOk(gfixPath: string): Promise<{ ok: boolean; actual: string }> {
+  try {
+    // Use execFile instead of exec to avoid shell injection: gfixPath is
+    // passed as the executable directly, never interpolated into a shell string.
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+    const runFile = promisify(execFile);
+    const { stdout } = await runFile(gfixPath, ['--version'], { timeout: 5000 });
+    const m = stdout.match(/(\d+\.\d+\.\d+(?:-[\w.]+)?)/);
+    const actual = m?.[1] ?? 'unknown';
+    return { ok: semverGte(actual, REQUIRED_GFIX_MIN), actual };
+  } catch {
+    return { ok: false, actual: 'not-found' };
+  }
+}
 
 let mcpClient: GfixMcpClient | undefined;
 let detector: MergeStateDetector | undefined;
@@ -81,16 +102,28 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     });
   }
 
+  // Lazy getter that safely handles the activation window before detector is
+  // initialized: returns a no-merge sentinel rather than throwing on `detector!`.
+  function getDetectorState(): import('./git/detect').MergeState {
+    return detector?.currentState() ?? { hasMerge: false, repoPath: undefined };
+  }
+
+  // Multi-repo state getter — used by apply/abort/codelens to resolve the
+  // correct target repo via active editor position or QuickPick.
+  function getMultiState(): import('./workspace/multi-folder').MultiRepoState {
+    return detector?.currentMultiState() ?? { active: new Map(), anyActive: false };
+  }
+
   // 4. Register commands FIRST so they are always present regardless of MCP state.
   // Commands guard on getMcpClient() at invoke time and surface a helpful error
   // when the MCP server is unavailable.
   context.subscriptions.push(
-    ...registerResolveCommands(getMcpClient, treeProvider, () => detector!.currentState()),
-    ...registerRefreshCommand(treeProvider, () => detector!.currentState()),
-    ...registerAuditRefCommand(getMcpClient, treeProvider, () => detector!.currentState(), context),
-    ...registerApplyCommand(getMcpClient, treeProvider, () => detector!.currentState()),
-    ...registerAbortCommand(getMcpClient, treeProvider, () => detector!.currentState()),
-    ...registerCodeLensCommands(getMcpClient, treeProvider, () => detector!.currentState()),
+    ...registerResolveCommands(getMcpClient, treeProvider, getDetectorState),
+    ...registerRefreshCommand(treeProvider, getDetectorState),
+    ...registerAuditRefCommand(getMcpClient, treeProvider, getDetectorState, context),
+    ...registerApplyCommand(getMcpClient, treeProvider, getDetectorState, getMultiState),
+    ...registerAbortCommand(getMcpClient, treeProvider, getDetectorState, getMultiState),
+    ...registerCodeLensCommands(getMcpClient, treeProvider, getDetectorState, getMultiState),
     ...registerByokOnboardingCommand(),
     // Walkthrough command — opens the built-in walkthrough panel.
     vscode.commands.registerCommand('gitfix.openWalkthrough', () => {
@@ -109,6 +142,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     mcpClient = new GfixMcpClient(gfixPath);
     await mcpClient.start({ enableByok: byokStatus.configured });
     log(`MCP client connected to ${gfixPath}`);
+
+    // Check gfix CLI version floor (non-blocking warning only).
+    const { ok: versionOk, actual: actualVersion } = await gfixVersionOk(gfixPath);
+    if (!versionOk && actualVersion !== 'not-found') {
+      vscode.window.showWarningMessage(
+        vscode.l10n.t(
+          'gitfix needs gfix {0} or newer (you have {1}). Update for best results.',
+          REQUIRED_GFIX_MIN,
+          actualVersion,
+        ),
+        'Update gfix',
+      ).then((c) => {
+        if (c === 'Update gfix') {
+          vscode.env.openExternal(vscode.Uri.parse('https://gfix.space/install'));
+        }
+      });
+    }
     treeProvider.setClient(mcpClient);
 
     // 4a. Install vscode.lm sampling host and surface AI availability to CodeLens.
