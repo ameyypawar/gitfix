@@ -49,7 +49,7 @@ export function registerCodeLensCommands(
     // const byLine = all.find((c) => 'first_line' in c &&
     //   Math.abs((c as any).first_line - lineIndex) <= 2);
     // if (byLine) return byLine;
-    void lineIndex; // acknowledged but not used until gfix wire-type adds first_line
+    void lineIndex; // TODO(#9): use lineIndex once gfix exposes conflict first_line in the wire type; quick-pick fallback handles selection today.
     const picked = await vscode.window.showQuickPick(
       all.map((c) => ({
         label: `conflict_id: ${c.conflict_id}`,
