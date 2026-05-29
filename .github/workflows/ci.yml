@@ -14,8 +14,8 @@ jobs:
         os: [ubuntu-latest, macos-14, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: 'npm'
@@ -35,15 +35,17 @@ jobs:
 
   integration:
     runs-on: ubuntu-latest
+    env:
+      GFIX_VERSION: v0.1.0-alpha.4
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: 'npm'
       - name: Install gfix
         run: |
-          gh release download --repo ameyypawar/gfix --pattern '*x86_64-unknown-linux-gnu.tar.gz' --output gfix.tar.gz
+          gh release download "$GFIX_VERSION" --repo ameyypawar/gfix --pattern '*x86_64-unknown-linux-gnu.tar.gz' --output gfix.tar.gz
           tar -xzf gfix.tar.gz
           sudo mv gfix /usr/local/bin/
           gfix --version
