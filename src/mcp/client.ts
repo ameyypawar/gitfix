@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -45,7 +46,7 @@ export class GfixMcpClient {
         env['GITFIX_BYOK'] = '1';
       }
       if (opts.allowedRoots && opts.allowedRoots.length > 0) {
-        env['GITFIX_ALLOWED_ROOTS'] = opts.allowedRoots.join(':');
+        env['GITFIX_ALLOWED_ROOTS'] = opts.allowedRoots.join(path.delimiter);
       }
     }
     this.transport = new StdioClientTransport({
