@@ -12,20 +12,22 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
+      - run: npm run lint:l10n
+      - run: npm run test:compile
       - run: npm run package
 
-      # Pre-release tags carry an alpha/beta/rc suffix.
+      # Pre-release tags carry an alpha/beta/rc/pre/canary/next/dev suffix.
       - name: Determine pre-release flag
         id: prerelease
         run: |
-          if [[ "${GITHUB_REF_NAME}" == *"-alpha"* || "${GITHUB_REF_NAME}" == *"-beta"* || "${GITHUB_REF_NAME}" == *"-rc"* ]]; then
+          if [[ "${GITHUB_REF_NAME}" == *"-alpha"* || "${GITHUB_REF_NAME}" == *"-beta"* || "${GITHUB_REF_NAME}" == *"-rc"* || "${GITHUB_REF_NAME}" == *"-pre"* || "${GITHUB_REF_NAME}" == *"-canary"* || "${GITHUB_REF_NAME}" == *"-next"* || "${GITHUB_REF_NAME}" == *"-dev"* ]]; then
             echo "flag=--pre-release" >> "$GITHUB_OUTPUT"
           else
             echo "flag=" >> "$GITHUB_OUTPUT"
@@ -47,10 +49,10 @@ jobs:
       - name: Publish to Open VSX
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: npx ovsx publish ${{ steps.prerelease.outputs.flag }} -p $OVSX_PAT
+        run: npx ovsx publish ${{ steps.prerelease.outputs.flag }}
 
       - name: Attach VSIX to GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: '*.vsix'
-          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') || contains(github.ref_name, '-pre') || contains(github.ref_name, '-canary') || contains(github.ref_name, '-next') || contains(github.ref_name, '-dev') }}
