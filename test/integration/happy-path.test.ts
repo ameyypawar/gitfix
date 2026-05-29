@@ -13,7 +13,8 @@ suite('integration — happy path', () => {
   });
 
   test('setupSimpleMergeFixture creates a repo with a conflict', async () => {
-    tmpDir = await setupSimpleMergeFixture();
+    const fixture = await setupSimpleMergeFixture();
+    tmpDir = fixture.repoPath;
     assert.ok(fs.existsSync(tmpDir), 'tmp dir should exist');
     const mergeHead = `${tmpDir}/.git/MERGE_HEAD`;
     assert.ok(

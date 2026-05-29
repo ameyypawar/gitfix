@@ -84,7 +84,8 @@ suite('integration — ConflictTreeProvider via live MCP', () => {
     }
 
     // Build a real git fixture repo with a content conflict.
-    tmpDir = await setupSimpleMergeFixture();
+    const fixture = await setupSimpleMergeFixture();
+    tmpDir = fixture.repoPath;
 
     // Sanity-check: fixture must have MERGE_HEAD and conflict markers.
     const mergeHeadOid = getMergeHeadOid(tmpDir);
@@ -93,14 +94,19 @@ suite('integration — ConflictTreeProvider via live MCP', () => {
     assert.ok(readme.includes('<<<<<<<'), 'fixture README.md must contain conflict markers');
 
     // Connect a real GfixMcpClient to a live gfix mcp subprocess.
+    // Pass allowedRoots so gfix builds that restrict the server to the launch
+    // working directory (e.g. v0.1.0-alpha.4 + GITFIX_ALLOWED_ROOTS) accept
+    // the temp fixture repo path.
     client = new GfixMcpClient(gfixPath, '1.0.0-test');
-    await client.start({ enableByok: false });
+    await client.start({ enableByok: false, allowedRoots: [tmpDir] });
 
     // Call mergePreview — the real MCP round-trip against the fixture repo.
+    // Pass the source branch name (not the MERGE_HEAD OID): gfix's mergePreview
+    // API expects branch names in the `sources` array.
     const plan = await client.mergePreview({
       repo_path: tmpDir,
       target: 'main',
-      sources: [mergeHeadOid],
+      sources: [fixture.sourceBranch],
     });
 
     // Plan must name at least one unresolved conflict (README.md has markers).

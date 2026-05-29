@@ -24,7 +24,7 @@ export class MergeRootItem extends vscode.TreeItem {
     this.description = breakdown;
     this.tooltip =
       `merge_id: ${plan.merge_id}\n` +
-      `sources: ${plan.sources.join(', ')}\n` +
+      `sources: ${plan.source_branches.join(', ')}\n` +
       `auto-resolved: ${plan.resolved.length} (rerere replay: ${rerereCount})`;
   }
 }
