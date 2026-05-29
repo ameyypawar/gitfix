@@ -62,7 +62,21 @@ Or manually:
 | `gitfix.protectedBranches` | `["main","master","develop","release"]` | Branches requiring confirmation |
 | `gitfix.telemetry.enabled` | `false` | Opt-in to anonymized usage events |
 
-Per-repo overrides: create `.gitfix/config.toml` at your repo root (see docs for schema).
+Per-repo overrides: create `.gitfix/config.toml` at your repo root. When this file is present its values take precedence over the VS Code settings above.
+
+### `.gitfix/config.toml` schema
+
+```toml
+# Merge strategy. One of: "mergiraf" | "text" | "auto" (default "auto").
+strategy = "auto"
+
+# Enable rerere cache replay for previously seen conflicts (default true).
+allow_rerere = true
+
+# Branches that require confirmation before applying the merge.
+# Default: ["main", "master", "develop", "release"].
+protected_branches = ["main", "master", "develop", "release"]
+```
 
 ## Commands
 
@@ -89,6 +103,14 @@ When you configure a BYO API key, gitfix writes it to `~/.config/gitfix/keys.tom
 
 - **macOS / Linux**: the file is created with mode `0600` (owner read/write only) and the parent directory with `0700`. Only your user account can read it.
 - **Windows**: `fs.writeFile` mode bits are not enforced by the Windows kernel. The file relies on the per-user profile directory's default ACLs to restrict access. Keep `keys.toml` inside your user profile path (`%USERPROFILE%\.config\gitfix\`) and do not share or move it elsewhere.
+
+### README badges (#50)
+
+The version, installs, and license badges at the top of this file are served by [shields.io](https://shields.io), a third-party service. When you view this README (in a browser, on the Marketplace, or in VS Code's extension details pane), your browser fetches those badge images from shields.io servers. No gitfix user data is involved — the requests contain only the extension identifier and badge type.
+
+## Known limitations
+
+- **Git worktrees are not supported for merge detection.** Merge state detection checks for `.git/MERGE_HEAD` inside a `.git` directory. In a git worktree, `.git` is a file (pointing to the common `.git` directory), so the MERGE_HEAD file is not at the expected path and the extension will not detect an active merge. Support for worktrees is planned for a future release.
 
 ## How it works
 
