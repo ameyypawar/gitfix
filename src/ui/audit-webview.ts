@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as crypto from 'node:crypto';
 import type { AuditEnvelope } from '../mcp/types';
+import { escHtml } from './webview-utils';
 
 export class AuditPanel {
   private static instance: AuditPanel | undefined;
@@ -17,10 +18,6 @@ export class AuditPanel {
       'gitfix.audit',
       'gitfix Audit',
       vscode.ViewColumn.Beside,
-      // Fix #6: retainContextWhenHidden was true, keeping stale DOM in memory
-      // even when the panel is hidden. The audit is a one-off view; re-render
-      // on reveal() from the stored instance field is cheaper than the memory
-      // overhead of keeping a hidden webview alive.
       { enableScripts: true, retainContextWhenHidden: false },
     );
     const instance = new AuditPanel(panel, audit);
@@ -56,10 +53,7 @@ export class AuditPanel {
 
   private render(a: AuditEnvelope): string {
     const nonce = crypto.randomBytes(16).toString('base64');
-    const esc = (s: string) =>
-      s.replace(/[&<>"']/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-      );
+    const esc = escHtml;
     const rows = a.decisions
       .map(
         (d) => `
@@ -99,12 +93,7 @@ export class AuditPanel {
     <dt>Sources</dt><dd>${a.metadata.sources.map((s) => `<code>${esc(s)}</code>`).join(', ')}</dd>
     <dt>Strategy</dt><dd>${esc(a.metadata.strategy)}</dd>
     <dt>Substrate</dt><dd>${esc(a.metadata.substrate)}</dd>
-    <dt>Started</dt><dd>${esc(
-      // Fix #10: started_at is not yet emitted by gfix MCP (tracked upstream
-      // as gfix#3 — audit_metadata block missing). Fall back to the timestamp
-      // of the first recorded decision until the server-side fix lands.
-      a.metadata.started_at || a.decisions[0]?.at || 'unknown',
-    )}</dd>
+    <dt>Started</dt><dd>${esc(a.metadata.started_at || a.decisions[0]?.at || 'unknown')}</dd>
     ${a.metadata.applied_at ? `<dt>Applied</dt><dd>${esc(a.metadata.applied_at)}</dd>` : ''}
     ${a.metadata.commit_oid ? `<dt>Commit</dt><dd><code>${esc(a.metadata.commit_oid)}</code></dd>` : ''}
   </dl>

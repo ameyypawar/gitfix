@@ -15,7 +15,7 @@ type Listener = (state: MultiRepoState) => void | Promise<void>;
 
 export class MergeStateDetector implements vscode.Disposable {
   private fsWatcher?: vscode.FileSystemWatcher;
-  private gitDisposable?: vscode.Disposable;
+  private gitDisposables: vscode.Disposable[] = [];
   private last: MultiRepoState = { active: new Map(), anyActive: false };
 
   constructor(private listener: Listener) {}
@@ -29,13 +29,12 @@ export class MergeStateDetector implements vscode.Disposable {
       }
       const gitApi = gitExt.exports.getAPI(1);
       const wireRepo = (repo: { rootUri: vscode.Uri; state: { onDidChange: vscode.Event<void> } }) => {
-        const sub = repo.state.onDidChange(() => this.recompute());
-        this.gitDisposable = vscode.Disposable.from(this.gitDisposable ?? new vscode.Disposable(() => {}), sub);
+        this.gitDisposables.push(repo.state.onDidChange(() => this.recompute()));
       };
       gitApi.repositories.forEach(wireRepo);
       const addSub = gitApi.onDidOpenRepository?.(wireRepo);
       if (addSub) {
-        this.gitDisposable = vscode.Disposable.from(this.gitDisposable ?? new vscode.Disposable(() => {}), addSub);
+        this.gitDisposables.push(addSub);
       }
     } else {
       log('vscode.git extension unavailable; falling back to filesystem polling');
@@ -79,7 +78,8 @@ export class MergeStateDetector implements vscode.Disposable {
 
   dispose(): void {
     this.fsWatcher?.dispose();
-    this.gitDisposable?.dispose();
+    for (const d of this.gitDisposables) d.dispose();
+    this.gitDisposables = [];
   }
 }
 

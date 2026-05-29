@@ -4,7 +4,8 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { GfixMcpClient } from '../mcp/client';
 import { AuditPanel } from './audit-webview';
-import type { AuditEnvelope } from '../mcp/types';
+import { escHtml } from './webview-utils';
+import { envelopeFromStatus } from '../mcp/audit-utils';
 
 const exec = promisify(execFile);
 
@@ -33,7 +34,7 @@ export class AuditListPanel {
       'gitfix.audit.list',
       'gitfix Audit Refs',
       vscode.ViewColumn.Beside,
-      { enableScripts: true, retainContextWhenHidden: true },
+      { enableScripts: true, retainContextWhenHidden: false },
     );
     AuditListPanel.instance = new AuditListPanel(panel, refs, repoPath, client, context);
     panel.onDidDispose(() => { AuditListPanel.instance = undefined; });
@@ -64,19 +65,7 @@ export class AuditListPanel {
   private async openOne(mergeId: string): Promise<void> {
     try {
       const status = await this.client.mergeStatus({ repo_path: this.repoPath, merge_id: mergeId });
-      const audit: AuditEnvelope = {
-        metadata: {
-          merge_id: status.plan.merge_id,
-          target_branch: status.plan.target_branch,
-          sources: status.plan.sources,
-          strategy: 'gitfix',
-          substrate: 'libgit2',
-          started_at: status.decisions[0]?.at ?? new Date().toISOString(),
-        },
-        plan: status.plan,
-        decisions: status.decisions,
-      };
-      AuditPanel.showOrUpdate(audit, this.context);
+      AuditPanel.showOrUpdate(envelopeFromStatus(status), this.context);
     } catch (err) {
       vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -84,11 +73,12 @@ export class AuditListPanel {
 
   private async deleteOne(mergeId: string): Promise<void> {
     const choice = await vscode.window.showWarningMessage(
-      `Delete audit ref refs/gitfix/audit/${mergeId}?`,
-      { modal: true, detail: 'This permanently removes the audit trail for this merge.' },
-      'Delete',
+      vscode.l10n.t('Delete audit ref refs/gitfix/audit/{0}?', mergeId),
+      // eslint-disable-next-line max-len
+      { modal: true, detail: vscode.l10n.t('This permanently removes the audit trail for this merge.') },
+      vscode.l10n.t('Delete'),
     );
-    if (choice !== 'Delete') return;
+    if (choice !== vscode.l10n.t('Delete')) return;
     try {
       await exec('git', ['update-ref', '-d', `refs/gitfix/audit/${mergeId}`], { cwd: this.repoPath });
       this.update(await listAuditRefs(this.repoPath));
@@ -125,10 +115,7 @@ async function listAuditRefs(repoPath: string): Promise<AuditRef[]> {
 
 function render(refs: AuditRef[]): string {
   const nonce = crypto.randomBytes(16).toString('base64');
-  const esc = (s: string) =>
-    s.replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-    );
+  const esc = escHtml;
   const rows = refs.length === 0
     ? `<tr><td colspan="5" class="empty-row">No audit refs found in refs/gitfix/audit/</td></tr>`
     : refs.map((r) => `

@@ -13,13 +13,15 @@ import type {
 import { unwrapStructuredContent } from './unwrap';
 
 const CLIENT_NAME = 'gitfix-vscode';
-const CLIENT_VERSION = '0.2.0';
 
 export class GfixMcpClient {
   private client?: Client;
   private transport?: StdioClientTransport;
 
-  constructor(private gfixPath: string) {}
+  constructor(
+    private gfixPath: string,
+    private extensionVersion: string,
+  ) {}
 
   /**
    * Start the MCP subprocess and establish the handshake.
@@ -64,7 +66,7 @@ export class GfixMcpClient {
     };
 
     this.client = new Client(
-      { name: CLIENT_NAME, version: CLIENT_VERSION },
+      { name: CLIENT_NAME, version: this.extensionVersion },
       { capabilities: { sampling: {} } }, // Advertise sampling so gfix uses vscode.lm path.
     );
 
