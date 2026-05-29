@@ -29,17 +29,30 @@ export class GfixMcpClient {
    * @param opts.onSubprocessDied - Optional callback invoked when the gfix
    *   subprocess exits unexpectedly (transport close or error after start).
    *   The extension uses this to surface a "Reload Window" toast (#57).
+   * @param opts.allowedRoots - Optional list of absolute repo paths to pass as
+   *   GITFIX_ALLOWED_ROOTS. Required in test environments (and with gfix builds
+   *   that restrict the MCP server to the launch working directory) when the
+   *   fixture repo lives outside the extension host's cwd.
    */
   async start(
-    opts: { enableByok: boolean; onSubprocessDied?: () => void } = { enableByok: false },
+    opts: { enableByok: boolean; onSubprocessDied?: () => void; allowedRoots?: string[] } = { enableByok: false },
   ): Promise<void> {
+    const baseEnv = process.env as Record<string, string>;
+    let env: Record<string, string> | undefined;
+    if (opts.enableByok || opts.allowedRoots) {
+      env = { ...baseEnv };
+      if (opts.enableByok) {
+        env['GITFIX_BYOK'] = '1';
+      }
+      if (opts.allowedRoots && opts.allowedRoots.length > 0) {
+        env['GITFIX_ALLOWED_ROOTS'] = opts.allowedRoots.join(':');
+      }
+    }
     this.transport = new StdioClientTransport({
       command: this.gfixPath,
       args: ['mcp'],
       stderr: 'pipe',
-      env: opts.enableByok
-        ? { ...process.env as Record<string, string>, GITFIX_BYOK: '1' }
-        : undefined,
+      env,
     });
 
     // Forward subprocess stderr to the output channel for debugging.

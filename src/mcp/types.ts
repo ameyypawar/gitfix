@@ -36,7 +36,8 @@ export interface ResolvedEntry {
 export interface MergePlan {
   merge_id: string;
   target_branch: string;
-  sources: string[];
+  /** Branch names being merged into target_branch. Matches the `source_branches` field in the gfix wire response. */
+  source_branches: string[];
   resolved: ResolvedEntry[];
   unresolved: UnresolvedConflict[];
 }

@@ -15,7 +15,7 @@ suite('integration — audit webview data model', () => {
       plan: {
         merge_id: 'test-merge-id',
         target_branch: 'main',
-        sources: ['feature'],
+        source_branches: ['feature'],
         resolved: [],
         unresolved: [],
       },
@@ -43,7 +43,7 @@ suite('integration — audit webview data model', () => {
       plan: {
         merge_id: 'abc123',
         target_branch: 'main',
-        sources: ['feat/a', 'feat/b'],
+        source_branches: ['feat/a', 'feat/b'],
         resolved: [
           {
             file: 'src/main.rs',

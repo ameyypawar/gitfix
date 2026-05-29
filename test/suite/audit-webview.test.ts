@@ -29,7 +29,7 @@ function makeEnvelope(id: string): AuditEnvelope {
       substrate: 'libgit2',
       started_at: '2026-01-01T00:00:00Z',
     },
-    plan: { merge_id: id, target_branch: 'main', sources: ['feature'], resolved: [], unresolved: [] },
+    plan: { merge_id: id, target_branch: 'main', source_branches: ['feature'], resolved: [], unresolved: [] },
     decisions: [],
   };
 }

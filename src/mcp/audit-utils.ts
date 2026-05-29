@@ -15,7 +15,7 @@ export function envelopeFromStatus(status: MergeStatusResponse): AuditEnvelope {
     metadata: {
       merge_id: status.plan.merge_id,
       target_branch: status.plan.target_branch,
-      sources: status.plan.sources,
+      sources: status.plan.source_branches,
       strategy: 'gitfix',
       substrate: 'libgit2',
       started_at: status.decisions[0]?.at ?? new Date().toISOString(),
