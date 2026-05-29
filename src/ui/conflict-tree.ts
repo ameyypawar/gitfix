@@ -26,7 +26,10 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
     return total;
   }
 
-  /** Returns the first active repo path (legacy compat for single-repo commands). */
+  /**
+   * Returns the first active repo path (legacy compat for single-repo commands).
+   * @deprecated Use activeRepoPaths() for multi-repo correctness.
+   */
   get currentRepoPath(): string | undefined {
     return this.plans.size > 0 ? [...this.plans.keys()][0] : undefined;
   }
@@ -70,9 +73,7 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
     for (const k of [...this.plans.keys()]) {
       if (!state.active.has(k)) this.plans.delete(k);
     }
-    for (const repoPath of state.active.keys()) {
-      await this.refreshRepo(repoPath);
-    }
+    await Promise.all([...state.active.keys()].map((repoPath) => this.refreshRepo(repoPath)));
     this.emitter.fire();
   }
 

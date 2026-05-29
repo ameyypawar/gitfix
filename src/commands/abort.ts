@@ -47,12 +47,14 @@ export function registerAbortCommand(
         return;
       }
 
+      const abortLbl = vscode.l10n.t('Abort');
       const choice = await vscode.window.showWarningMessage(
-        'Discard all merge progress?',
-        { modal: true, detail: 'This cannot be undone.' },
-        'Abort',
+        vscode.l10n.t('Discard all merge progress?'),
+        // eslint-disable-next-line max-len
+        { modal: true, detail: vscode.l10n.t('This cannot be undone.') },
+        abortLbl,
       );
-      if (choice !== 'Abort') return;
+      if (choice !== abortLbl) return;
       try {
         await client.mergeAbort({
           repo_path: repoPath,

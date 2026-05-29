@@ -21,9 +21,20 @@ export class ConflictCodeLensProvider implements vscode.CodeLensProvider {
   /** Set by the AI host once vscode.lm is known to have at least one model. */
   private aiAvailable = false;
 
+  /**
+   * Cache keyed by document URI + version so getText() and the regex scan are
+   * not repeated when VS Code calls provideCodeLenses for the same document
+   * version multiple times (e.g. from multiple language features requesting
+   * lenses on the same pass).
+   */
+  private cache = new Map<string, vscode.CodeLens[]>();
+
   setMergeActive(active: boolean): void {
     if (this.hasActiveMerge !== active) {
       this.hasActiveMerge = active;
+      if (!active) {
+        this.cache.clear();
+      }
       this.emitter.fire();
     }
   }
@@ -43,6 +54,10 @@ export class ConflictCodeLensProvider implements vscode.CodeLensProvider {
     if (!config.get<boolean>('codeLens.enabled', true)) return [];
     if (!this.hasActiveMerge) return [];
     if (document.uri.scheme !== 'file') return [];
+
+    const cacheKey = `${document.uri.toString()}@${document.version}`;
+    const cached = this.cache.get(cacheKey);
+    if (cached) return cached;
 
     const text = document.getText();
     const lenses: vscode.CodeLens[] = [];
@@ -86,6 +101,7 @@ export class ConflictCodeLensProvider implements vscode.CodeLensProvider {
       }
     }
 
+    this.cache.set(cacheKey, lenses);
     return lenses;
   }
 

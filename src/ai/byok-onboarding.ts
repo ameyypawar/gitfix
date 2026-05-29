@@ -68,11 +68,11 @@ export function registerByokOnboardingCommand(): vscode.Disposable[] {
         );
       }
 
-      vscode.window.showInformationMessage(
-        `gitfix: ${provider.label} configured. The gfix subprocess will pick this up on the next merge — restart VS Code or reload the window now.`,
-        'Reload',
+      void vscode.window.showInformationMessage(
+        vscode.l10n.t('gitfix: {0} configured. The gfix subprocess will pick this up on the next merge — restart VS Code or reload the window now.', provider.label),
+        vscode.l10n.t('Reload'),
       ).then((c) => {
-        if (c === 'Reload') vscode.commands.executeCommand('workbench.action.reloadWindow');
+        if (c === vscode.l10n.t('Reload')) vscode.commands.executeCommand('workbench.action.reloadWindow');
       });
     }),
   ];
@@ -83,47 +83,46 @@ export async function ensureKeysToml(entries: Record<string, string>): Promise<v
   fs.mkdirSync(dir, { recursive: true });
   // Tighten perms on the gitfix/ dir itself to 0o700. We deliberately do NOT
   // chmod ~/.config — the user may have other tools relying on its existing
-  // permissions. (P2-3)
+  // permissions.
   try {
     fs.chmodSync(dir, 0o700);
   } catch (err) {
     log(`chmod gitfix config dir failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`);
   }
-  let existing = '';
-  if (fs.existsSync(KEYS_TOML_PATH)) {
-    existing = fs.readFileSync(KEYS_TOML_PATH, 'utf8');
-  }
-  // Fix #4: the original code had an early `return` inside the loop, which
-  // skipped any remaining entries after the first key-replace. Each key is now
-  // processed independently: in-place replacements accumulate in `current`,
-  // new keys accumulate in `lines`, and a single write happens at the end.
-  let current = existing;
-  const lines: string[] = [];
-  if (current.trim()) lines.push(current.trimEnd());
+
+  const existing = fs.existsSync(KEYS_TOML_PATH)
+    ? fs.readFileSync(KEYS_TOML_PATH, 'utf8')
+    : '';
+
+  // Merge: start from the existing content and apply each entry in turn.
+  // In-place replacements update `merged` so subsequent iterations see the
+  // already-replaced content; new keys are appended at the end.
+  // The function form of String.replace is used throughout to prevent `$&`,
+  // `$1`, etc. in API key values from being interpreted as replacement patterns
+  // (guards against keys containing `$` being silently corrupted).
+  let merged = existing;
+  const appended: string[] = [];
+
   for (const [k, v] of Object.entries(entries)) {
     const escaped = v.replace(/"/g, '\\"');
-    if (new RegExp(`^${k}\\s*=`, 'm').test(current)) {
-      // Replace existing key in-place — update `current` so subsequent
-      // iterations see the already-replaced content.
-      // Use the function form of String.replace to prevent `$&`, `$1`, etc.
-      // in the API key value from being interpreted as replacement patterns
-      // (fixes #18: keys containing `$` were silently corrupted).
+    const keyPattern = new RegExp(`^${k}\\s*=.*$`, 'm');
+    if (keyPattern.test(merged)) {
       const replacement = `${k} = "${escaped}"`;
-      current = current.replace(
-        new RegExp(`^${k}\\s*=.*$`, 'm'),
-        () => replacement,
-      );
-      // Refresh lines[0] (the existing-content slot) with the updated text.
-      if (lines.length > 0) lines[0] = current.trimEnd();
+      merged = merged.replace(keyPattern, () => replacement);
     } else {
-      lines.push(`${k} = "${escaped}"`);
+      appended.push(`${k} = "${escaped}"`);
     }
   }
+
+  const parts: string[] = [];
+  if (merged.trim()) parts.push(merged.trimEnd());
+  parts.push(...appended);
+
   // File is written with mode 0o600 (owner read/write only) on Unix/macOS.
   // On Windows, fs.writeFile mode bits are not enforced by the OS; instead,
   // the file inherits the ACLs of its parent directory (~/.config/gitfix/).
   // Keep keys.toml inside the user profile directory so that Windows default
   // ACLs restrict access to the owning user. Do not share or move this file
-  // outside the profile path. (#21)
-  fs.writeFileSync(KEYS_TOML_PATH, lines.join('\n') + '\n', { mode: 0o600 });
+  // outside the profile path.
+  fs.writeFileSync(KEYS_TOML_PATH, parts.join('\n') + '\n', { mode: 0o600 });
 }

@@ -134,24 +134,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // 4. Boot MCP client (async; failure is non-fatal — commands will show an error at
+  // 5. Boot MCP client (async; failure is non-fatal — commands will show an error at
   // invoke time instead of leaving the extension entirely unregistered).
   // Check BYOK before starting so we can pass enableByok to the subprocess.
   const byokStatus = checkBYOK();
   try {
-    mcpClient = new GfixMcpClient(gfixPath);
+    mcpClient = new GfixMcpClient(gfixPath, context.extension.packageJSON.version as string);
     await mcpClient.start({
       enableByok: byokStatus.configured,
       // #57: on unexpected subprocess death, surface a toast so the user knows
       // the session is broken and can recover without hunting for silent errors.
       onSubprocessDied: () => {
-        vscode.window
+        const reloadWindowLbl = vscode.l10n.t('Reload Window');
+        void vscode.window
           .showErrorMessage(
             vscode.l10n.t('gitfix: the gfix subprocess exited unexpectedly. Reload the window to reconnect.'),
-            vscode.l10n.t('Reload Window'),
+            reloadWindowLbl,
           )
           .then((choice) => {
-            if (choice === vscode.l10n.t('Reload Window')) {
+            if (choice === reloadWindowLbl) {
               vscode.commands.executeCommand('workbench.action.reloadWindow');
             }
           });
@@ -162,15 +163,16 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // Check gfix CLI version floor (non-blocking warning only).
     const { ok: versionOk, actual: actualVersion } = await gfixVersionOk(gfixPath);
     if (!versionOk && actualVersion !== 'not-found') {
-      vscode.window.showWarningMessage(
+      const updateGfixLbl = vscode.l10n.t('Update gfix');
+      void vscode.window.showWarningMessage(
         vscode.l10n.t(
           'gitfix needs gfix {0} or newer (you have {1}). Update for best results.',
           REQUIRED_GFIX_MIN,
           actualVersion,
         ),
-        'Update gfix',
+        updateGfixLbl,
       ).then((c) => {
-        if (c === 'Update gfix') {
+        if (c === updateGfixLbl) {
           vscode.env.openExternal(vscode.Uri.parse('https://gfix.space/install'));
         }
       });
@@ -186,11 +188,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const host = await installSamplingHost(raw);
         aiAvailable = host.available;
         if (!host.available && !byokStatus.configured) {
-          vscode.window.showInformationMessage(
+          const configureLbl = vscode.l10n.t('Configure');
+          void vscode.window.showInformationMessage(
             vscode.l10n.t('gitfix: no AI provider available. Configure one to enable "Resolve with AI".'),
-            vscode.l10n.t('Configure'),
+            configureLbl,
           ).then((c) => {
-            if (c === 'Configure') vscode.commands.executeCommand('gitfix.configureAiProvider');
+            if (c === configureLbl) vscode.commands.executeCommand('gitfix.configureAiProvider');
           });
         } else if (!host.available && byokStatus.configured) {
           aiAvailable = true; // gfix subprocess handles BYOK transparently
@@ -224,7 +227,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // DO NOT return — the extension stays activated with commands available.
   }
 
-  // 5. Detect merge state and refresh tree on changes.
+  // 6. Detect merge state and refresh tree on changes.
   detector = new MergeStateDetector(async (multiState) => {
     log(`merge state changed: anyActive=${multiState.anyActive} repos=${[...multiState.active.keys()].join(', ') || '(none)'}`);
     await vscode.commands.executeCommand('setContext', 'gitfix:hasMerge', multiState.anyActive);
@@ -240,17 +243,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(detector);
   await detector.start();
 
-  // 6. Watch settings changes for gfixPath restart.
+  // 7. Watch settings changes for gfixPath restart.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (e) => {
       if (e.affectsConfiguration('gitfix.gfixPath')) {
-        vscode.window
+        const reloadLbl = vscode.l10n.t('Reload');
+        void vscode.window
           .showInformationMessage(
-            'gitfix.gfixPath changed. Reload window to apply.',
-            'Reload',
+            vscode.l10n.t('gitfix.gfixPath changed. Reload window to apply.'),
+            reloadLbl,
           )
           .then((c) => {
-            if (c === 'Reload') {
+            if (c === reloadLbl) {
               vscode.commands.executeCommand('workbench.action.reloadWindow');
             }
           });

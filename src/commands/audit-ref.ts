@@ -4,7 +4,7 @@ import { ConflictTreeProvider } from '../ui/conflict-tree';
 import type { MergeState } from '../git/detect';
 import { AuditPanel } from '../ui/audit-webview';
 import { AuditListPanel } from '../ui/audit-list-webview';
-import type { AuditEnvelope } from '../mcp/types';
+import { envelopeFromStatus } from '../mcp/audit-utils';
 
 export function registerAuditRefCommand(
   getClient: () => GfixMcpClient | undefined,
@@ -24,22 +24,7 @@ export function registerAuditRefCommand(
         repo_path: state.repoPath,
         merge_id: tree.mergeId,
       });
-      // Compose audit envelope from merge_status data.
-      // Fields that gfix_merge_status does not yet expose (applied_at, commit_oid)
-      // are left undefined so the Webview degrades gracefully.
-      const audit: AuditEnvelope = {
-        metadata: {
-          merge_id: status.plan.merge_id,
-          target_branch: status.plan.target_branch,
-          sources: status.plan.sources,
-          strategy: 'gitfix',
-          substrate: 'libgit2',
-          started_at: status.decisions[0]?.at ?? new Date().toISOString(),
-        },
-        plan: status.plan,
-        decisions: status.decisions,
-      };
-      AuditPanel.showOrUpdate(audit, context);
+      AuditPanel.showOrUpdate(envelopeFromStatus(status), context);
     }),
 
     vscode.commands.registerCommand('gitfix.listAuditRefs', async () => {

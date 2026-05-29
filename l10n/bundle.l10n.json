@@ -13,5 +13,16 @@
   "Enable": "Enable",
   "Not now": "Not now",
   "gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.": "gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.",
-  "gitfix: no workspace folder detected.": "gitfix: no workspace folder detected."
+  "gitfix: no workspace folder detected.": "gitfix: no workspace folder detected.",
+  "gitfix: right-click a conflict in the tree to open its file.": "gitfix: right-click a conflict in the tree to open its file.",
+  "Discard all merge progress?": "Discard all merge progress?",
+  "This cannot be undone.": "This cannot be undone.",
+  "Abort": "Abort",
+  "Delete audit ref refs/gitfix/audit/{0}?": "Delete audit ref refs/gitfix/audit/{0}?",
+  "This permanently removes the audit trail for this merge.": "This permanently removes the audit trail for this merge.",
+  "Delete": "Delete",
+  "gitfix: {0} configured. The gfix subprocess will pick this up on the next merge — restart VS Code or reload the window now.": "gitfix: {0} configured. The gfix subprocess will pick this up on the next merge — restart VS Code or reload the window now.",
+  "gitfix needs gfix {0} or newer (you have {1}). Update for best results.": "gitfix needs gfix {0} or newer (you have {1}). Update for best results.",
+  "Update gfix": "Update gfix",
+  "gitfix.gfixPath changed. Reload window to apply.": "gitfix.gfixPath changed. Reload window to apply."
 }

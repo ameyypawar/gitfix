@@ -77,7 +77,6 @@ export function registerCodeLensCommands(
         vscode.window.showErrorMessage(vscode.l10n.t('gitfix: MCP server not available.'));
         return;
       }
-      // Fix #28: resolve repo path from the URI, not from legacy single-repo state.
       const repoPath = resolveRepoForUri(uri);
       const mergeId = repoPath ? tree.mergeIdForRepo(repoPath) : tree.mergeId;
       const state = getState();
@@ -116,7 +115,6 @@ export function registerCodeLensCommands(
       // 'ai-suggestion' is rejected unless a prior conflict_get cached one.
       const client = getClient();
       const state = getState();
-      // Fix #28: resolve repo from URI
       const repoPath = resolveRepoForUri(uri);
       const mergeId = repoPath ? tree.mergeIdForRepo(repoPath) : tree.mergeId;
       if (!client || !repoPath || !mergeId) return;

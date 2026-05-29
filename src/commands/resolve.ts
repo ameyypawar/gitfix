@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'node:path';
 import { GfixMcpClient } from '../mcp/client';
 import { ConflictTreeProvider } from '../ui/conflict-tree';
 import { ConflictItem } from '../ui/conflict-item';
@@ -15,9 +16,13 @@ export function registerResolveCommands(
     vscode.commands.registerCommand(
       'gitfix.openFile',
       async (item?: ConflictItem) => {
-        const target = item ?? pickFirst(tree);
-        if (!target) return;
-        const uri = vscode.Uri.file(`${target.repoPath}/${target.conflict.file}`);
+        if (!item) {
+          vscode.window.showWarningMessage(
+            vscode.l10n.t('gitfix: right-click a conflict in the tree to open its file.'),
+          );
+          return;
+        }
+        const uri = vscode.Uri.file(path.join(item.repoPath, item.conflict.file));
         await vscode.window.showTextDocument(uri);
       },
     ),
@@ -85,14 +90,6 @@ export function registerResolveCommands(
       },
     ),
   ];
-}
-
-function pickFirst(tree: ConflictTreeProvider): ConflictItem | undefined {
-  // The tree exposes findUnresolved by id; for command-palette invocation we
-  // don't currently surface a picker — that lands in Phase 2. Return undefined
-  // so the command no-ops if invoked without a tree-item argument.
-  void tree;
-  return undefined;
 }
 
 async function resolve(
