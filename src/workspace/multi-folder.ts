@@ -14,13 +14,16 @@ export interface MultiRepoState {
   anyActive: boolean;
 }
 
-export function scanWorkspaceFolders(): MultiRepoState {
+export async function scanWorkspaceFolders(): Promise<MultiRepoState> {
   const folders = vscode.workspace.workspaceFolders ?? [];
   const active = new Map<string, MergeState>();
   for (const f of folders) {
     const mergeHead = path.join(f.uri.fsPath, '.git', 'MERGE_HEAD');
-    if (fs.existsSync(mergeHead)) {
+    try {
+      await fs.promises.access(mergeHead);
       active.set(f.uri.fsPath, { hasMerge: true, repoPath: f.uri.fsPath });
+    } catch {
+      // File does not exist — no active merge in this folder.
     }
   }
   return { active, anyActive: active.size > 0 };

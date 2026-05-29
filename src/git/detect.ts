@@ -64,7 +64,7 @@ export class MergeStateDetector implements vscode.Disposable {
   }
 
   private async recompute(): Promise<void> {
-    const next = scanWorkspaceFolders();
+    const next = await scanWorkspaceFolders();
     // Compare by size and key set to detect changes.
     const changed =
       next.anyActive !== this.last.anyActive ||
