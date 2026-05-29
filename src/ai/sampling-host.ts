@@ -4,6 +4,17 @@ import { CreateMessageRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { log } from '../log';
 
 /**
+ * Rough heuristic: average characters per token used to convert a maxTokens
+ * budget into a character-length ceiling for streamed responses.
+ *
+ * 4 chars/token is a reasonable English estimate but significantly undercounts
+ * CJK text (each ideograph is ~1 token, not 4 chars). This is intentionally
+ * conservative — overshooting by a small factor is preferable to cutting off
+ * responses too early. (#44)
+ */
+const CHARS_PER_TOKEN_HEURISTIC = 4;
+
+/**
  * Select the best available vscode.lm model honoring the given hints.
  * Called fresh on every sampling request (fix #5 — no caching to avoid TOCTOU
  * when Copilot installs after the extension activates).
@@ -40,6 +51,14 @@ export async function installSamplingHost(client: Client): Promise<{
   available: boolean;
   modelLabel?: string;
 }> {
+  // Per-session request counter for the budget warning (#23).
+  // Reads gitfix.ai.budgetWarningAt at handler-install time; changes take
+  // effect on the next window reload (consistent with other per-session state).
+  let requestCount = 0;
+  let budgetWarningFired = false;
+  const budgetWarningAt = vscode.workspace
+    .getConfiguration('gitfix')
+    .get<number>('ai.budgetWarningAt', 8);
   // Report initial availability for CodeLens / info-toast purposes, but do
   // NOT gate handler installation on this check (fix #5).
   let initialModels: vscode.LanguageModelChat[] = [];
@@ -100,6 +119,18 @@ export async function installSamplingHost(client: Client): Promise<{
       throw new Error('no vscode.lm model available');
     }
 
+    // Increment per-session counter and emit a one-time warning when the
+    // configured threshold is reached (#23). Soft-continue: the request is
+    // NOT blocked; the warning is purely informational.
+    requestCount += 1;
+    if (!budgetWarningFired && budgetWarningAt > 0 && requestCount >= budgetWarningAt) {
+      budgetWarningFired = true;
+      vscode.window.showWarningMessage(
+        // eslint-disable-next-line max-len
+        vscode.l10n.t('gitfix: {0} AI suggestion requests used this session. You can adjust the threshold in gitfix.ai.budgetWarningAt.', requestCount),
+      );
+    }
+
     const cts = new vscode.CancellationTokenSource();
     try {
       const response = await picked.sendRequest(
@@ -111,7 +142,7 @@ export async function installSamplingHost(client: Client): Promise<{
       let buffer = '';
       for await (const chunk of response.text) {
         buffer += chunk;
-        if (maxTokens && buffer.length >= maxTokens * 4) {
+        if (maxTokens && buffer.length >= maxTokens * CHARS_PER_TOKEN_HEURISTIC) {
           // Cancel upstream generation so we stop burning quota. (P2-1)
           cts.cancel();
           break;

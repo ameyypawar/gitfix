@@ -1,4 +1,7 @@
 {
+  "gitfix: the gfix subprocess exited unexpectedly. Reload the window to reconnect.": "gitfix: the gfix subprocess exited unexpectedly. Reload the window to reconnect.",
+  "Reload Window": "Reload Window",
+  "gitfix: {0} AI suggestion requests used this session. You can adjust the threshold in gitfix.ai.budgetWarningAt.": "gitfix: {0} AI suggestion requests used this session. You can adjust the threshold in gitfix.ai.budgetWarningAt.",
   "gitfix: no active merge.": "gitfix: no active merge.",
   "gitfix: {0} unresolved conflict(s). Resolve them before applying.": "gitfix: {0} unresolved conflict(s). Resolve them before applying.",
   "gitfix: merge applied as {0}": "gitfix: merge applied as {0}",

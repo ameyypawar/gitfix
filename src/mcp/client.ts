@@ -21,7 +21,16 @@ export class GfixMcpClient {
 
   constructor(private gfixPath: string) {}
 
-  async start(opts: { enableByok: boolean } = { enableByok: false }): Promise<void> {
+  /**
+   * Start the MCP subprocess and establish the handshake.
+   *
+   * @param opts.onSubprocessDied - Optional callback invoked when the gfix
+   *   subprocess exits unexpectedly (transport close or error after start).
+   *   The extension uses this to surface a "Reload Window" toast (#57).
+   */
+  async start(
+    opts: { enableByok: boolean; onSubprocessDied?: () => void } = { enableByok: false },
+  ): Promise<void> {
     this.transport = new StdioClientTransport({
       command: this.gfixPath,
       args: ['mcp'],
@@ -36,12 +45,31 @@ export class GfixMcpClient {
       log(`[gfix stderr] ${chunk.toString().trimEnd()}`);
     });
 
+    // Wire transport lifecycle events so callers can react to unexpected death
+    // of the gfix subprocess (#57). Both onclose and onerror are guarded so they
+    // fire only after the initial connect() succeeds — a failure during start()
+    // itself is reported via the thrown exception, not these callbacks.
+    let connected = false;
+    this.transport.onclose = () => {
+      if (connected) {
+        log('[gfix] transport closed unexpectedly');
+        opts.onSubprocessDied?.();
+      }
+    };
+    this.transport.onerror = (err: Error) => {
+      if (connected) {
+        log(`[gfix] transport error: ${err.message}`);
+        opts.onSubprocessDied?.();
+      }
+    };
+
     this.client = new Client(
       { name: CLIENT_NAME, version: CLIENT_VERSION },
       { capabilities: { sampling: {} } }, // Advertise sampling so gfix uses vscode.lm path.
     );
 
     await this.client.connect(this.transport);
+    connected = true;
     log('MCP handshake complete');
   }
 

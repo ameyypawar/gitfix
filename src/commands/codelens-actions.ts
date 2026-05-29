@@ -124,14 +124,21 @@ export function registerCodeLensCommands(
       if (!conflict) return;
       try {
         await vscode.window.withProgress(
-          { location: vscode.ProgressLocation.Notification, title: vscode.l10n.t('gitfix: requesting AI suggestion...') },
-          async () => {
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: vscode.l10n.t('gitfix: requesting AI suggestion...'),
+            // #44: allow the user to cancel a long-running AI resolve.
+            cancellable: true,
+          },
+          async (_progress, token) => {
             const got = await client.conflictGet({
               repo_path: repoPath,
               merge_id: mergeId,
               conflict_id: conflict.conflict_id,
               include_ai_suggestion: true,
             });
+            // Respect cancellation after the potentially slow conflict_get call.
+            if (token.isCancellationRequested) return;
             if (!got.ai_suggestion) {
               throw new Error(got.ai_suggestion_unavailable_reason ?? 'no suggestion produced');
             }
@@ -141,6 +148,7 @@ export function registerCodeLensCommands(
               conflict_id: conflict.conflict_id,
               resolution: { kind: 'ai-suggestion' },
             });
+            if (token.isCancellationRequested) return;
             await tree.refresh(repoPath);
           },
         );

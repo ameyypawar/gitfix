@@ -41,13 +41,27 @@ export class GitfixTelemetry {
 
 /**
  * Strip any property value that looks like a file path, URL, email address,
- * or is excessively long. Defense-in-depth; callers must not pass PII.
+ * contains newlines or other control characters, or is excessively long.
+ * Defense-in-depth; callers must not pass PII.
+ *
+ * Allowed characters: printable ASCII excluding path separators (/ \),
+ * the at-sign (@), and all control characters (U+0000–U+001F, including
+ * CR \r and LF \n which could enable log-injection attacks). Values
+ * exceeding 64 characters are also dropped.
  */
 function sanitize(props: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
+  // eslint-disable-next-line no-control-regex
+  const controlCharRe = /[\x00-\x1F]/;
   for (const [k, v] of Object.entries(props)) {
     if (typeof v !== 'string') continue;
-    if (v.includes('/') || v.includes('\\') || v.includes('@') || v.length > 64) continue;
+    if (
+      v.includes('/') ||
+      v.includes('\\') ||
+      v.includes('@') ||
+      v.length > 64 ||
+      controlCharRe.test(v)
+    ) continue;
     out[k] = v;
   }
   return out;

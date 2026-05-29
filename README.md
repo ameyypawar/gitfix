@@ -81,6 +81,15 @@ Per-repo overrides: create `.gitfix/config.toml` at your repo root (see docs for
 | `gitfix.configureAiProvider` | Configure a BYOK API key for AI suggestions |
 | `gitfix.openWalkthrough` | Open the Get Started walkthrough |
 
+## Security notes
+
+### BYOK key file permissions (#21)
+
+When you configure a BYO API key, gitfix writes it to `~/.config/gitfix/keys.toml`.
+
+- **macOS / Linux**: the file is created with mode `0600` (owner read/write only) and the parent directory with `0700`. Only your user account can read it.
+- **Windows**: `fs.writeFile` mode bits are not enforced by the Windows kernel. The file relies on the per-user profile directory's default ACLs to restrict access. Keep `keys.toml` inside your user profile path (`%USERPROFILE%\.config\gitfix\`) and do not share or move it elsewhere.
+
 ## How it works
 
 gitfix spawns `gfix mcp` as a subprocess and communicates over stdio using the Model Context Protocol. All conflict resolution decisions flow through `gfix`, which maintains a per-merge plan and an audit trail in `refs/gitfix/audit/`.
