@@ -119,5 +119,11 @@ export async function ensureKeysToml(entries: Record<string, string>): Promise<v
       lines.push(`${k} = "${escaped}"`);
     }
   }
+  // File is written with mode 0o600 (owner read/write only) on Unix/macOS.
+  // On Windows, fs.writeFile mode bits are not enforced by the OS; instead,
+  // the file inherits the ACLs of its parent directory (~/.config/gitfix/).
+  // Keep keys.toml inside the user profile directory so that Windows default
+  // ACLs restrict access to the owning user. Do not share or move this file
+  // outside the profile path. (#21)
   fs.writeFileSync(KEYS_TOML_PATH, lines.join('\n') + '\n', { mode: 0o600 });
 }

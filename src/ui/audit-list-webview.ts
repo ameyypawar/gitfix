@@ -130,7 +130,7 @@ function render(refs: AuditRef[]): string {
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
     );
   const rows = refs.length === 0
-    ? `<tr><td colspan="5" style="text-align:center;color:var(--vscode-descriptionForeground)">No audit refs found in refs/gitfix/audit/</td></tr>`
+    ? `<tr><td colspan="5" class="empty-row">No audit refs found in refs/gitfix/audit/</td></tr>`
     : refs.map((r) => `
     <tr>
       <td><input type="checkbox" class="sel" data-id="${esc(r.mergeId)}"></td>
@@ -148,8 +148,8 @@ function render(refs: AuditRef[]): string {
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
-<style>
+      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}';">
+<style nonce="${nonce}">
   body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 16px; }
   h1 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 4px; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; }
@@ -159,6 +159,8 @@ function render(refs: AuditRef[]): string {
   button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 0; padding: 4px 8px; border-radius: 2px; cursor: pointer; margin-right: 4px; }
   button:hover { background: var(--vscode-button-hoverBackground); }
   .toolbar { margin-bottom: 8px; }
+  .col-checkbox { width: 24px; }
+  .empty-row { text-align: center; color: var(--vscode-descriptionForeground); }
 </style>
 </head>
 <body>
@@ -169,7 +171,7 @@ function render(refs: AuditRef[]): string {
   <table>
     <thead>
       <tr>
-        <th style="width:24px"></th>
+        <th class="col-checkbox"></th>
         <th>Merge ID</th>
         <th>OID</th>
         <th>Subject</th>

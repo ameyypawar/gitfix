@@ -77,8 +77,8 @@ export class AuditPanel {
 <head>
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'unsafe-inline';">
-<style>
+      content="default-src 'none'; script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}';">
+<style nonce="${nonce}">
   body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); padding: 16px; }
   h1, h2 { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 4px; }
   table { width: 100%; border-collapse: collapse; margin-top: 8px; }
@@ -89,6 +89,7 @@ export class AuditPanel {
   .meta dt { color: var(--vscode-descriptionForeground); }
   button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 0; padding: 6px 12px; border-radius: 2px; cursor: pointer; }
   button:hover { background: var(--vscode-button-hoverBackground); }
+  .share-footer { margin-top: 16px; }
 </style>
 </head>
 <body>
@@ -131,7 +132,7 @@ export class AuditPanel {
     <tbody>${rows}</tbody>
   </table>
 
-  <p style="margin-top: 16px;">
+  <p class="share-footer">
     <button onclick="vscode.postMessage({type:'copyShareCmd'})">Copy git command to share this audit</button>
   </p>
 <script nonce="${nonce}">

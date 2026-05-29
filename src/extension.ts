@@ -140,7 +140,23 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const byokStatus = checkBYOK();
   try {
     mcpClient = new GfixMcpClient(gfixPath);
-    await mcpClient.start({ enableByok: byokStatus.configured });
+    await mcpClient.start({
+      enableByok: byokStatus.configured,
+      // #57: on unexpected subprocess death, surface a toast so the user knows
+      // the session is broken and can recover without hunting for silent errors.
+      onSubprocessDied: () => {
+        vscode.window
+          .showErrorMessage(
+            vscode.l10n.t('gitfix: the gfix subprocess exited unexpectedly. Reload the window to reconnect.'),
+            vscode.l10n.t('Reload Window'),
+          )
+          .then((choice) => {
+            if (choice === vscode.l10n.t('Reload Window')) {
+              vscode.commands.executeCommand('workbench.action.reloadWindow');
+            }
+          });
+      },
+    });
     log(`MCP client connected to ${gfixPath}`);
 
     // Check gfix CLI version floor (non-blocking warning only).
