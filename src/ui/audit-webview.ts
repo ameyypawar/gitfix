@@ -122,10 +122,11 @@ export class AuditPanel {
   </table>
 
   <p class="share-footer">
-    <button onclick="vscode.postMessage({type:'copyShareCmd'})">Copy git command to share this audit</button>
+    <button id="copy-share-btn">Copy git command to share this audit</button>
   </p>
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
+  document.getElementById('copy-share-btn')?.addEventListener('click', () => vscode.postMessage({ type: 'copyShareCmd' }));
 </script>
 </body>
 </html>`;
