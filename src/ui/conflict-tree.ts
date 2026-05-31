@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { GfixMcpClient } from '../mcp/client';
 import type { MergePlan, MergeStatusResponse, UnresolvedConflict } from '../mcp/types';
 import { ConflictItem, MergeRootItem, ResolvedGroupItem, ResolvedItem } from './conflict-item';
-import { getMergeHeadOid } from '../git/detect';
+import { getMergeHeadOid, resolveMergeSourceBranch } from '../git/detect';
 import type { MultiRepoState } from '../workspace/multi-folder';
 import { log } from '../log';
 
@@ -117,10 +117,15 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
         return;
       }
 
+      const sourceBranch = await resolveMergeSourceBranch(repoPath, mergeHead);
+      if (!sourceBranch) {
+        log(`could not resolve source branch for MERGE_HEAD ${mergeHead} in ${repoPath}; falling back to OID`);
+      }
+
       const plan = await this.client.mergePreview({
         repo_path: repoPath,
         target,
-        sources: [mergeHead],
+        sources: [sourceBranch ?? mergeHead],
       });
       this.plans.set(repoPath, plan);
     } catch (err) {

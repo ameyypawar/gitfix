@@ -12,6 +12,7 @@ import { ConflictCodeLensProvider } from './ui/codelens-provider';
 import { installSamplingHost } from './ai/sampling-host';
 import { checkBYOK, registerByokOnboardingCommand } from './ai/byok-onboarding';
 import { MergeStateDetector } from './git/detect';
+import { getAllowedRoots } from './workspace/multi-folder';
 import { ConflictItem } from './ui/conflict-item';
 import { GitfixTelemetry } from './telemetry/reporter';
 import { semverGte } from './util/semver';
@@ -142,6 +143,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     mcpClient = new GfixMcpClient(gfixPath, context.extension.packageJSON.version as string);
     await mcpClient.start({
       enableByok: byokStatus.configured,
+      allowedRoots: getAllowedRoots(),
       // #57: on unexpected subprocess death, surface a toast so the user knows
       // the session is broken and can recover without hunting for silent errors.
       onSubprocessDied: () => {
