@@ -10,3 +10,7 @@ export function log(msg: string): void {
 export function showOutputChannel(): void {
   channel.show(true);
 }
+
+export function getLogChannel(): vscode.OutputChannel {
+  return channel;
+}

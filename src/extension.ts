@@ -16,7 +16,7 @@ import { getAllowedRoots } from './workspace/multi-folder';
 import { ConflictItem } from './ui/conflict-item';
 import { GitfixTelemetry } from './telemetry/reporter';
 import { semverGte } from './util/semver';
-import { log, showOutputChannel } from './log';
+import { log, showOutputChannel, getLogChannel } from './log';
 
 /** Minimum gfix CLI version required for full functionality. */
 const REQUIRED_GFIX_MIN = '0.1.0-alpha.3';
@@ -76,6 +76,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   statusBar = new StatusBar();
   context.subscriptions.push(statusBar);
+  context.subscriptions.push(getLogChannel());
 
   // 2. CodeLens provider — register early, responds to merge state changes below.
   const codeLensProvider = new ConflictCodeLensProvider();
@@ -120,7 +121,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // when the MCP server is unavailable.
   context.subscriptions.push(
     ...registerResolveCommands(getMcpClient, treeProvider, getDetectorState),
-    ...registerRefreshCommand(treeProvider, getDetectorState),
+    ...registerRefreshCommand(treeProvider, getMultiState),
     ...registerAuditRefCommand(getMcpClient, treeProvider, getDetectorState, context),
     ...registerApplyCommand(getMcpClient, treeProvider, getDetectorState, getMultiState),
     ...registerAbortCommand(getMcpClient, treeProvider, getDetectorState, getMultiState),
@@ -147,6 +148,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       // #57: on unexpected subprocess death, surface a toast so the user knows
       // the session is broken and can recover without hunting for silent errors.
       onSubprocessDied: () => {
+        mcpClient = undefined;
         const reloadWindowLbl = vscode.l10n.t('Reload Window');
         void vscode.window
           .showErrorMessage(
