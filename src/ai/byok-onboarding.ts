@@ -119,11 +119,34 @@ export async function ensureKeysToml(entries: Record<string, string>): Promise<v
   if (merged.trim()) parts.push(merged.trimEnd());
   parts.push(...appended);
 
-  // File is written with mode 0o600 (owner read/write only) on Unix/macOS.
+  // File is written atomically via a temp file + rename so that a crash or
+  // signal mid-write never leaves keys.toml partially written.
+  // Mode 0o600 (owner read/write only) on Unix/macOS.
   // On Windows, fs.writeFile mode bits are not enforced by the OS; instead,
   // the file inherits the ACLs of its parent directory (~/.config/gitfix/).
   // Keep keys.toml inside the user profile directory so that Windows default
   // ACLs restrict access to the owning user. Do not share or move this file
   // outside the profile path.
-  fs.writeFileSync(KEYS_TOML_PATH, parts.join('\n') + '\n', { mode: 0o600 });
+  const tmp = path.join(dir, '.keys.toml.' + process.pid + '.' + Math.random().toString(36).slice(2) + '.tmp');
+  try {
+    fs.writeFileSync(tmp, parts.join('\n') + '\n', { mode: 0o600 });
+    try {
+      fs.renameSync(tmp, KEYS_TOML_PATH);
+    } catch (renameErr) {
+      // On Windows, renameSync can throw EPERM/EEXIST if the target exists.
+      // Remove the target and retry once.
+      if (fs.existsSync(KEYS_TOML_PATH)) {
+        fs.rmSync(KEYS_TOML_PATH, { force: true });
+        fs.renameSync(tmp, KEYS_TOML_PATH);
+      } else {
+        throw renameErr;
+      }
+    }
+  } finally {
+    try {
+      if (fs.existsSync(tmp)) fs.unlinkSync(tmp);
+    } catch {
+      // ignore cleanup failure
+    }
+  }
 }
