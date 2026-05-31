@@ -7,9 +7,7 @@ const ctxOptions = {
   entryPoints: ['src/extension.ts'],
   bundle: true,
   outfile: 'dist/extension.js',
-  // @vscode/extension-telemetry has complex native deps (applicationinsights);
-  // mark it external so VS Code loads it from node_modules at runtime.
-  external: ['vscode', '@vscode/extension-telemetry'],
+  external: ['vscode'],
   format: 'cjs',
   platform: 'node',
   target: 'node18',
