@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { sanitize } from '../../src/telemetry/reporter';
 
 /**
  * Tests for GitfixTelemetry in src/telemetry/reporter.ts.
@@ -6,21 +7,7 @@ import * as assert from 'assert';
  * We test the sanitize logic and the enabled/disabled behavior indirectly by
  * verifying the send() method is a no-op when disabled (no exceptions, no
  * output-channel side effects observable in unit tests without a real VS Code env).
- *
- * The sanitize() function is not exported; we test it through behavior assertions
- * on properties that would be stripped.
  */
-
-// Minimal sanitize re-implementation to lock the expected behavior.
-function sanitize(props: Record<string, string>): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [k, v] of Object.entries(props)) {
-    if (typeof v !== 'string') continue;
-    if (v.includes('/') || v.includes('\\') || v.includes('@') || v.length > 64) continue;
-    out[k] = v;
-  }
-  return out;
-}
 
 suite('telemetry — sanitize + send behavior', () => {
   test('sanitize strips values containing forward slashes (file paths)', () => {
@@ -58,6 +45,13 @@ suite('telemetry — sanitize + send behavior', () => {
     const val = 'a'.repeat(64);
     const result = sanitize({ key: val });
     assert.strictEqual(result.key, val);
+  });
+
+  test('sanitize strips values containing control characters (newline, carriage return)', () => {
+    const result = sanitize({ safe: 'ok', withLF: 'line\ninjection', withCR: 'line\rinjection' });
+    assert.ok(!('withLF' in result), 'value with \\n should be stripped');
+    assert.ok(!('withCR' in result), 'value with \\r should be stripped');
+    assert.strictEqual(result.safe, 'ok');
   });
 
   test('telemetry disabled by default — send is no-op (no exception thrown)', () => {

@@ -49,7 +49,7 @@ export class GitfixTelemetry {
  * CR \r and LF \n which could enable log-injection attacks). Values
  * exceeding 64 characters are also dropped.
  */
-function sanitize(props: Record<string, string>): Record<string, string> {
+export function sanitize(props: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   // eslint-disable-next-line no-control-regex
   const controlCharRe = /[\x00-\x1F]/;
