@@ -49,12 +49,35 @@ Or manually:
 4. Resolve conflicts via tree right-click or inline CodeLens buttons
 5. Click **Apply Merge** when all conflicts are resolved
 
+## Resolution modes
+
+Each conflict can be resolved one of these ways, from the tree (right-click) or the inline CodeLens buttons above each conflict marker:
+
+- **Take Ours** — keep your current branch's version of the conflicting region.
+- **Take Theirs** — keep the incoming branch's version.
+- **Take Target Unchanged** — for N-way conflicts where two sources both changed a file, keep the target branch's pre-merge version instead of either source's (command `gitfix.resolveTakeTarget`).
+- **Run Mergiraf** — an AST-aware structured merge that resolves many conflicts automatically by understanding code structure rather than raw text. Run it per conflict, or across all selected conflicts at once.
+- **Resolve with AI** — request an AI-suggested resolution (see preconditions below).
+
+Take Ours / Take Theirs / Take Target and Mergiraf are deterministic and make no network calls. Only **Resolve with AI** invokes a model.
+
+### AI suggestion preconditions
+
+**Resolve with AI** is available only when an AI source is configured:
+
+- `gitfix.aiProvider` must be `host` or `byok` (not `none`).
+- **`host`** (default) — gitfix advertises MCP sampling and resolution uses a language model already available in VS Code (for example, GitHub Copilot). At least one such model must be installed and enabled.
+- **`byok`** — bring your own key. Run **Configure AI Provider** to store a key for Anthropic, OpenAI, or a local Ollama server in `~/.config/gitfix/keys.toml`; gfix then calls that provider directly.
+- If `host` mode finds no available model but a BYOK key is configured, gitfix falls back to the BYOK key automatically.
+- AI suggestions are budgeted (10 fresh suggestions per merge by default); replays of previously cached suggestions are free.
+
+When no AI source is available, the **Resolve with AI** action prompts you to configure one.
+
 ## Extension Settings
 
 | Setting | Default | Description |
 |---|---|---|
 | `gitfix.gfixPath` | `"gfix"` | Path to the gfix binary |
-| `gitfix.activateOnGitMerge` | `true` | Auto-activate on merge start |
 | `gitfix.codeLens.enabled` | `true` | Show inline CodeLens buttons |
 | `gitfix.aiProvider` | `"host"` | AI source: `host` (Copilot etc.), `byok`, or `none` |
 | `gitfix.mergeStrategy` | `"auto"` | Default resolution strategy (`mergiraf`, `text`, `auto`) |
