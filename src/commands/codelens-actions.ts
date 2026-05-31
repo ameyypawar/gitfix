@@ -35,9 +35,7 @@ export function registerCodeLensCommands(
     const relPath = path.relative(state.repoPath, uri.fsPath);
     const all = tree.findAllUnresolvedByFile(relPath);
     if (all.length === 0) {
-      vscode.window.showWarningMessage(
-        `gitfix: no unresolved conflict tracked for ${relPath}. Refresh the tree.`,
-      );
+      vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no unresolved conflict tracked for {0}. Refresh the tree.', relPath));
       return undefined;
     }
     if (all.length === 1) return all[0];
@@ -101,7 +99,7 @@ export function registerCodeLensCommands(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         log(`codelens resolve failed: ${msg}`);
-        vscode.window.showErrorMessage(`gitfix: ${msg}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', msg));
       }
     };
 
@@ -153,7 +151,7 @@ export function registerCodeLensCommands(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         log(`codelens resolveWithAi failed: ${msg}`);
-        vscode.window.showErrorMessage(`gitfix: ${msg}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', msg));
       }
     }),
   ];

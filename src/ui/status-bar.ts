@@ -18,8 +18,8 @@ export class StatusBar implements vscode.Disposable {
       this.item.hide();
       return;
     }
-    this.item.text = `$(git-merge) ${count} conflict${count === 1 ? '' : 's'}`;
-    this.item.tooltip = 'gitfix — click to refresh';
+    this.item.text = `$(git-merge) ${count === 1 ? vscode.l10n.t('{0} conflict', count) : vscode.l10n.t('{0} conflicts', count)}`;
+    this.item.tooltip = vscode.l10n.t('gitfix — click to refresh');
     this.item.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     this.item.show();
   }

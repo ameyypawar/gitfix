@@ -67,23 +67,24 @@ export class AuditListPanel {
       const status = await this.client.mergeStatus({ repo_path: this.repoPath, merge_id: mergeId });
       AuditPanel.showOrUpdate(envelopeFromStatus(status), this.context);
     } catch (err) {
-      vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', err instanceof Error ? err.message : String(err)));
     }
   }
 
   private async deleteOne(mergeId: string): Promise<void> {
+    const deleteLbl = vscode.l10n.t('Delete');
     const choice = await vscode.window.showWarningMessage(
       vscode.l10n.t('Delete audit ref refs/gitfix/audit/{0}?', mergeId),
       // eslint-disable-next-line max-len
       { modal: true, detail: vscode.l10n.t('This permanently removes the audit trail for this merge.') },
-      vscode.l10n.t('Delete'),
+      deleteLbl,
     );
-    if (choice !== vscode.l10n.t('Delete')) return;
+    if (choice !== deleteLbl) return;
     try {
       await exec('git', ['update-ref', '-d', `refs/gitfix/audit/${mergeId}`], { cwd: this.repoPath });
       this.update(await listAuditRefs(this.repoPath));
     } catch (err) {
-      vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+      vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', err instanceof Error ? err.message : String(err)));
     }
   }
 

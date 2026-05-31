@@ -34,7 +34,7 @@ export class ResolvedGroupItem extends vscode.TreeItem {
     public readonly resolved: ResolvedEntry[],
     public readonly repoPath: string,
   ) {
-    super(`Auto-resolved (${resolved.length})`, vscode.TreeItemCollapsibleState.Collapsed);
+    super(vscode.l10n.t('Auto-resolved ({0})', resolved.length), vscode.TreeItemCollapsibleState.Collapsed);
     this.contextValue = 'resolvedGroup';
     this.iconPath = new vscode.ThemeIcon('check');
   }

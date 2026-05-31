@@ -40,7 +40,7 @@ export class AuditPanel {
         // subsequent update() calls are reflected. (P1-1)
         const cmd = `git push origin refs/gitfix/audit/${this.currentAudit.metadata.merge_id}`;
         vscode.env.clipboard.writeText(cmd).then(() => {
-          vscode.window.showInformationMessage(`Copied: ${cmd}`);
+          vscode.window.showInformationMessage(vscode.l10n.t('Copied: {0}', cmd));
         });
       }
     });

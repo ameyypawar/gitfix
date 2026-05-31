@@ -39,24 +39,24 @@ export function registerByokOnboardingCommand(): vscode.Disposable[] {
     vscode.commands.registerCommand('gitfix.configureAiProvider', async () => {
       const provider = await vscode.window.showQuickPick(
         [
-          { label: 'Anthropic (Claude)', value: 'anthropic' as const, detail: 'Recommended. Best results on conflict resolution.' },
-          { label: 'OpenAI (GPT)', value: 'openai' as const, detail: undefined },
-          { label: 'Ollama (local)', value: 'ollama' as const, detail: 'No network calls; needs a local server running.' },
+          { label: vscode.l10n.t('Anthropic (Claude)'), value: 'anthropic' as const, detail: vscode.l10n.t('Recommended. Best results on conflict resolution.') },
+          { label: vscode.l10n.t('OpenAI (GPT)'), value: 'openai' as const, detail: undefined },
+          { label: vscode.l10n.t('Ollama (local)'), value: 'ollama' as const, detail: vscode.l10n.t('No network calls; needs a local server running.') },
         ],
-        { placeHolder: 'Choose an AI provider for gitfix BYO-key fallback' },
+        { placeHolder: vscode.l10n.t('Choose an AI provider for gitfix BYO-key fallback') },
       );
       if (!provider) return;
 
       if (provider.value === 'ollama') {
         const host = await vscode.window.showInputBox({
-          prompt: 'Ollama host URL',
+          prompt: vscode.l10n.t('Ollama host URL'),
           value: process.env.OLLAMA_HOST ?? 'http://localhost:11434',
         });
         if (!host) return;
         await ensureKeysToml({ ollama_host: host });
       } else {
         const key = await vscode.window.showInputBox({
-          prompt: `${provider.value === 'anthropic' ? 'Anthropic' : 'OpenAI'} API key`,
+          prompt: vscode.l10n.t('{0} API key', provider.value === 'anthropic' ? 'Anthropic' : 'OpenAI'),
           password: true,
           ignoreFocusOut: true,
         });
@@ -68,11 +68,12 @@ export function registerByokOnboardingCommand(): vscode.Disposable[] {
         );
       }
 
+      const reloadLbl = vscode.l10n.t('Reload');
       void vscode.window.showInformationMessage(
         vscode.l10n.t('gitfix: {0} configured. The gfix subprocess will pick this up on the next merge — restart VS Code or reload the window now.', provider.label),
-        vscode.l10n.t('Reload'),
+        reloadLbl,
       ).then((c) => {
-        if (c === vscode.l10n.t('Reload')) vscode.commands.executeCommand('workbench.action.reloadWindow');
+        if (c === reloadLbl) vscode.commands.executeCommand('workbench.action.reloadWindow');
       });
     }),
   ];

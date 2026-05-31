@@ -92,12 +92,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const CONSENT_KEY = 'gitfix.telemetry.consentShown';
   if (!context.globalState.get(CONSENT_KEY)) {
     context.globalState.update(CONSENT_KEY, true);
+    const enableLbl = vscode.l10n.t('Enable');
     vscode.window.showInformationMessage(
       vscode.l10n.t('gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.'),
-      vscode.l10n.t('Enable'),
+      enableLbl,
       vscode.l10n.t('Not now'),
     ).then((c) => {
-      if (c === vscode.l10n.t('Enable')) {
+      if (c === enableLbl) {
         vscode.workspace.getConfiguration('gitfix').update('telemetry.enabled', true, vscode.ConfigurationTarget.Global);
       }
     });
@@ -215,7 +216,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     telemetry.send('extension.error', { errorClass: (err as Error)?.constructor?.name ?? 'Error', command: 'activate' });
     vscode.window
       .showErrorMessage(
-        `gitfix: failed to start gfix MCP server (${msg}). Install gfix or set gitfix.gfixPath.`,
+        vscode.l10n.t('gitfix: failed to start gfix MCP server ({0}). Install gfix or set gitfix.gfixPath.', msg),
         'Open install guide',
         'Show logs',
       )

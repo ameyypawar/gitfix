@@ -130,9 +130,7 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
       this.plans.set(repoPath, plan);
     } catch (err) {
       log(`tree refresh failed for ${repoPath}: ${err instanceof Error ? err.message : String(err)}`);
-      vscode.window.showErrorMessage(
-        `gitfix: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', err instanceof Error ? err.message : String(err)));
       this.plans.delete(repoPath);
     }
   }
