@@ -18,6 +18,7 @@ const CLIENT_NAME = 'gitfix-vscode';
 export class GfixMcpClient {
   private client?: Client;
   private transport?: StdioClientTransport;
+  private dead = false;
 
   constructor(
     private gfixPath: string,
@@ -38,16 +39,14 @@ export class GfixMcpClient {
   async start(
     opts: { enableByok: boolean; onSubprocessDied?: () => void; allowedRoots?: string[] } = { enableByok: false },
   ): Promise<void> {
+    this.dead = false;
     const baseEnv = process.env as Record<string, string>;
-    let env: Record<string, string> | undefined;
-    if (opts.enableByok || opts.allowedRoots) {
-      env = { ...baseEnv };
-      if (opts.enableByok) {
-        env['GITFIX_BYOK'] = '1';
-      }
-      if (opts.allowedRoots && opts.allowedRoots.length > 0) {
-        env['GITFIX_ALLOWED_ROOTS'] = opts.allowedRoots.join(path.delimiter);
-      }
+    const env: Record<string, string> = { ...baseEnv };
+    if (opts.enableByok) {
+      env['GITFIX_BYOK'] = '1';
+    }
+    if (opts.allowedRoots && opts.allowedRoots.length > 0) {
+      env['GITFIX_ALLOWED_ROOTS'] = opts.allowedRoots.join(path.delimiter);
     }
     this.transport = new StdioClientTransport({
       command: this.gfixPath,
@@ -69,12 +68,14 @@ export class GfixMcpClient {
     this.transport.onclose = () => {
       if (connected) {
         log('[gfix] transport closed unexpectedly');
+        this.dead = true;
         opts.onSubprocessDied?.();
       }
     };
     this.transport.onerror = (err: Error) => {
       if (connected) {
         log(`[gfix] transport error: ${err.message}`);
+        this.dead = true;
         opts.onSubprocessDied?.();
       }
     };
@@ -109,6 +110,9 @@ export class GfixMcpClient {
   }
 
   private requireClient(): Client {
+    if (this.dead) {
+      throw new Error('gfix subprocess has exited; reload the window to reconnect.');
+    }
     if (!this.client) {
       throw new Error('MCP client not started');
     }
