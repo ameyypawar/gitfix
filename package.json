@@ -28,6 +28,15 @@
     "workspaceContains:**/.git/MERGE_HEAD"
   ],
   "main": "./dist/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "restrictedConfigurations": [
+        "gitfix.gfixPath",
+        "gitfix.protectedBranches"
+      ]
+    }
+  },
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -288,11 +297,6 @@
           "scope": "machine",
           "description": "%settings.gfixPath.description%"
         },
-        "gitfix.activateOnGitMerge": {
-          "type": "boolean",
-          "default": true,
-          "description": "%settings.activateOnGitMerge.description%"
-        },
         "gitfix.codeLens.enabled": {
           "type": "boolean",
           "default": true,
@@ -418,7 +422,7 @@
     "ovsx:publish": "ovsx publish"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.0"
+    "@modelcontextprotocol/sdk": "1.29.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
