@@ -1,9 +1,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { log } from '../log';
 import { scanWorkspaceFolders } from '../workspace/multi-folder';
 import type { MultiRepoState } from '../workspace/multi-folder';
+
+const execFileAsync = promisify(execFile);
 
 /** Single-folder merge state (kept for backward compat with command handlers). */
 export interface MergeState {
@@ -94,6 +98,35 @@ export function getMergeHeadOid(repoPath: string): string | undefined {
     const raw = fs.readFileSync(mergeHeadPath, 'utf8');
     const first = raw.split('\n')[0]?.trim();
     return first && first.length > 0 ? first : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Resolve a commit OID to a local branch name that points at it. Used to
+ * recover the source branch being merged from the MERGE_HEAD OID, because
+ * gfix's mergePreview expects branch names (not OIDs) in `sources`.
+ * Returns the first local branch ref pointing at the OID, or undefined.
+ */
+export async function resolveMergeSourceBranch(
+  repoPath: string,
+  oid: string,
+): Promise<string | undefined> {
+  try {
+    const { stdout } = await execFileAsync('git', [
+      '-C',
+      repoPath,
+      'for-each-ref',
+      '--points-at',
+      oid,
+      '--format=%(refname:short)',
+      'refs/heads/',
+    ]);
+    return stdout
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => l.length > 0);
   } catch {
     return undefined;
   }
