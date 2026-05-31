@@ -19,7 +19,6 @@
   "command.codelens.runMergiraf.title": "Resolve (CodeLens): Run Mergiraf",
   "command.codelens.resolveWithAi.title": "Resolve (CodeLens): With AI Suggestion",
   "settings.gfixPath.description": "Path to the gfix binary. Defaults to 'gfix' (resolved via PATH).",
-  "settings.activateOnGitMerge.description": "Auto-activate the conflict tree when VS Code detects an in-progress merge.",
   "settings.codeLens.enabled.description": "Show inline CodeLens buttons above git conflict markers.",
   "settings.aiProvider.description": "AI suggestion source. 'host' uses VS Code's Language Model API (Copilot, etc.). 'byok' uses keys from ~/.config/gitfix/keys.toml or env. 'none' disables AI.",
   "settings.ai.budgetWarningAt.description": "Show a notification when AI suggestion count reaches this number (default budget is 10/merge).",
