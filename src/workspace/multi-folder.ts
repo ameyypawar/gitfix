@@ -52,3 +52,8 @@ export function resolveTargetRepo(
   if (state.active.size === 1) return [...state.active.keys()][0];
   return undefined;
 }
+
+/** Absolute fsPaths of all open workspace folders, for GITFIX_ALLOWED_ROOTS. */
+export function getAllowedRoots(): string[] {
+  return (vscode.workspace.workspaceFolders ?? []).map((f) => f.uri.fsPath);
+}
