@@ -5,6 +5,7 @@ import type { MergeState } from '../git/detect';
 import { AuditPanel } from '../ui/audit-webview';
 import { AuditListPanel } from '../ui/audit-list-webview';
 import { envelopeFromStatus } from '../mcp/audit-utils';
+import { MergeRootItem } from '../ui/conflict-item';
 
 export function registerAuditRefCommand(
   getClient: () => GfixMcpClient | undefined,
@@ -13,16 +14,20 @@ export function registerAuditRefCommand(
   context: vscode.ExtensionContext,
 ): vscode.Disposable[] {
   return [
-    vscode.commands.registerCommand('gitfix.showAuditRef', async () => {
+    vscode.commands.registerCommand('gitfix.showAuditRef', async (item?: MergeRootItem) => {
       const client = getClient();
       const state = getState();
-      if (!client || !state.hasMerge || !state.repoPath || !tree.mergeId) {
+      const repoPath = item?.repoPath ?? state.repoPath;
+      const mergeId = (repoPath ? tree.mergeIdForRepo(repoPath) : undefined)
+        ?? item?.plan?.merge_id
+        ?? tree.mergeId;
+      if (!client || !repoPath || !mergeId) {
         vscode.window.showInformationMessage(vscode.l10n.t('gitfix: no active merge.'));
         return;
       }
       const status = await client.mergeStatus({
-        repo_path: state.repoPath,
-        merge_id: tree.mergeId,
+        repo_path: repoPath,
+        merge_id: mergeId,
       });
       AuditPanel.showOrUpdate(envelopeFromStatus(status), context);
     }),
