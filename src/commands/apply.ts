@@ -72,12 +72,13 @@ export function registerApplyCommand(
       // (needsConfirm=true meant "user still needs to confirm" not "approved").
       const isProtected = settings.protectedBranches.includes(targetBranch);
       if (isProtected) {
+        const applyLbl = vscode.l10n.t('Apply');
         const choice = await vscode.window.showWarningMessage(
           vscode.l10n.t("Apply merge to protected branch '{0}'?", targetBranch),
           { modal: true, detail: vscode.l10n.t('This will create a merge commit on {0}.', targetBranch) },
-          'Apply',
+          applyLbl,
         );
-        if (choice !== 'Apply') return;
+        if (choice !== applyLbl) return;
       }
       try {
         const result = await client.mergeApply({
@@ -95,7 +96,7 @@ export function registerApplyCommand(
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         log(`merge_apply failed: ${msg}`);
-        vscode.window.showErrorMessage(`gitfix: ${msg}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', msg));
       }
     }),
   ];

@@ -64,7 +64,7 @@ export function registerAbortCommand(
         await tree.refresh(repoPath);
       } catch (err) {
         log(`merge_abort failed: ${err instanceof Error ? err.message : String(err)}`);
-        vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+        vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', err instanceof Error ? err.message : String(err)));
       }
     }),
   ];

@@ -1,7 +1,7 @@
 {
   "name": "gitfix",
-  "displayName": "gitfix — Merge Conflict Inspector",
-  "description": "Workspace-wide merge conflict inspector and companion to VS Code's built-in merge editor. Powered by gfix MCP.",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "1.0.0",
   "publisher": "ameyypawar",
   "license": "MIT",
@@ -57,98 +57,98 @@
     "commands": [
       {
         "command": "gitfix.refresh",
-        "title": "Refresh Conflicts",
+        "title": "%command.refresh.title%",
         "icon": "$(refresh)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.openFile",
-        "title": "Open in Editor",
+        "title": "%command.openFile.title%",
         "icon": "$(go-to-file)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.resolveOurs",
-        "title": "Resolve: Take Ours",
+        "title": "%command.resolveOurs.title%",
         "icon": "$(arrow-left)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.resolveTheirs",
-        "title": "Resolve: Take Theirs",
+        "title": "%command.resolveTheirs.title%",
         "icon": "$(arrow-right)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.resolveMergiraf",
-        "title": "Resolve: Run Mergiraf",
+        "title": "%command.resolveMergiraf.title%",
         "icon": "$(wand)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.resolveTakeTarget",
-        "title": "Resolve: Take Target Unchanged",
+        "title": "%command.resolveTakeTarget.title%",
         "icon": "$(circle-slash)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.resolveBatchMergiraf",
-        "title": "Resolve Selected with Mergiraf",
+        "title": "%command.resolveBatchMergiraf.title%",
         "icon": "$(wand)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.applyMerge",
-        "title": "Apply Merge",
+        "title": "%command.applyMerge.title%",
         "icon": "$(check-all)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.abortMerge",
-        "title": "Abort Merge",
+        "title": "%command.abortMerge.title%",
         "icon": "$(close)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.showAuditRef",
-        "title": "Show Audit Ref",
+        "title": "%command.showAuditRef.title%",
         "icon": "$(history)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.configureAiProvider",
-        "title": "Configure AI Provider",
+        "title": "%command.configureAiProvider.title%",
         "category": "gitfix"
       },
       {
         "command": "gitfix.codelens.takeOurs",
-        "title": "Resolve (CodeLens): Take Ours",
+        "title": "%command.codelens.takeOurs.title%",
         "category": "gitfix"
       },
       {
         "command": "gitfix.codelens.takeTheirs",
-        "title": "Resolve (CodeLens): Take Theirs",
+        "title": "%command.codelens.takeTheirs.title%",
         "category": "gitfix"
       },
       {
         "command": "gitfix.codelens.runMergiraf",
-        "title": "Resolve (CodeLens): Run Mergiraf",
+        "title": "%command.codelens.runMergiraf.title%",
         "category": "gitfix"
       },
       {
         "command": "gitfix.codelens.resolveWithAi",
-        "title": "Resolve (CodeLens): With AI Suggestion",
+        "title": "%command.codelens.resolveWithAi.title%",
         "category": "gitfix"
       },
       {
         "command": "gitfix.listAuditRefs",
-        "title": "List Audit Refs",
+        "title": "%command.listAuditRefs.title%",
         "icon": "$(list-unordered)",
         "category": "gitfix"
       },
       {
         "command": "gitfix.openWalkthrough",
-        "title": "Get Started with gitfix",
+        "title": "%command.openWalkthrough.title%",
         "category": "gitfix"
       }
     ],
@@ -286,17 +286,17 @@
           "type": "string",
           "default": "gfix",
           "scope": "machine",
-          "description": "Path to the gfix binary. Defaults to 'gfix' (resolved via PATH). Override with an absolute path if needed. Machine-scoped: cannot be set per-workspace to prevent workspace-trust escalation."
+          "description": "%settings.gfixPath.description%"
         },
         "gitfix.activateOnGitMerge": {
           "type": "boolean",
           "default": true,
-          "description": "Auto-activate the conflict tree when VS Code detects an in-progress merge."
+          "description": "%settings.activateOnGitMerge.description%"
         },
         "gitfix.codeLens.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Show inline CodeLens buttons above git conflict markers."
+          "description": "%settings.codeLens.enabled.description%"
         },
         "gitfix.aiProvider": {
           "type": "string",
@@ -306,12 +306,12 @@
             "none"
           ],
           "default": "host",
-          "description": "AI suggestion source. 'host' uses VS Code's Language Model API (Copilot, etc.). 'byok' uses keys from ~/.config/gitfix/keys.toml or env. 'none' disables AI."
+          "description": "%settings.aiProvider.description%"
         },
         "gitfix.ai.budgetWarningAt": {
           "type": "number",
           "default": 8,
-          "description": "Show a notification when AI suggestion count reaches this number (default budget is 10/merge)."
+          "description": "%settings.ai.budgetWarningAt.description%"
         },
         "gitfix.mergeStrategy": {
           "type": "string",
@@ -321,12 +321,12 @@
             "auto"
           ],
           "default": "auto",
-          "description": "Default strategy when invoking gitfix_merge_preview. 'auto' lets gfix pick (mergiraf for supported languages, text otherwise)."
+          "description": "%settings.mergeStrategy.description%"
         },
         "gitfix.allowRerere": {
           "type": "boolean",
           "default": true,
-          "description": "Allow rerere cache replay during merge_preview. Disable to force fresh resolution."
+          "description": "%settings.allowRerere.description%"
         },
         "gitfix.protectedBranches": {
           "type": "array",
@@ -339,12 +339,12 @@
             "develop",
             "release"
           ],
-          "description": "Branches that require explicit confirmation in Apply Merge."
+          "description": "%settings.protectedBranches.description%"
         },
         "gitfix.telemetry.enabled": {
           "type": "boolean",
           "default": false,
-          "description": "Send anonymized usage telemetry. Honors vscode.env.isTelemetryEnabled — disabled if VS Code-wide telemetry is off."
+          "description": "%settings.telemetry.enabled.description%"
         }
       }
     },

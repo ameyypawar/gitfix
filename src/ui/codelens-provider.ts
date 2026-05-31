@@ -74,17 +74,17 @@ export class ConflictCodeLensProvider implements vscode.CodeLensProvider {
 
       lenses.push(
         new vscode.CodeLens(range, {
-          title: '$(arrow-left) Take Ours',
+          title: vscode.l10n.t('$(arrow-left) Take Ours'),
           command: 'gitfix.codelens.takeOurs',
           arguments: [document.uri, lineIndex],
         }),
         new vscode.CodeLens(range, {
-          title: '$(arrow-right) Take Theirs',
+          title: vscode.l10n.t('$(arrow-right) Take Theirs'),
           command: 'gitfix.codelens.takeTheirs',
           arguments: [document.uri, lineIndex],
         }),
         new vscode.CodeLens(range, {
-          title: '$(wand) Resolve with Mergiraf',
+          title: vscode.l10n.t('$(wand) Resolve with Mergiraf'),
           command: 'gitfix.codelens.runMergiraf',
           arguments: [document.uri, lineIndex],
         }),
@@ -93,7 +93,7 @@ export class ConflictCodeLensProvider implements vscode.CodeLensProvider {
       if (this.aiAvailable) {
         lenses.push(
           new vscode.CodeLens(range, {
-            title: '$(sparkle) Resolve with AI',
+            title: vscode.l10n.t('$(sparkle) Resolve with AI'),
             command: 'gitfix.codelens.resolveWithAi',
             arguments: [document.uri, lineIndex],
           }),

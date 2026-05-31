@@ -79,12 +79,10 @@ export function registerResolveCommands(
                 resolution: { kind: 'mergiraf' },
               })),
             });
-            vscode.window.showInformationMessage(
-              `gitfix: resolved ${result.resolved}, failed ${result.failed}, remaining ${result.remaining_unresolved}.`,
-            );
+            vscode.window.showInformationMessage(vscode.l10n.t('gitfix: resolved {0}, failed {1}, remaining {2}.', result.resolved, result.failed, result.remaining_unresolved));
             await tree.refresh(repoPath);
           } catch (err) {
-            vscode.window.showErrorMessage(`gitfix: ${err instanceof Error ? err.message : String(err)}`);
+            vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', err instanceof Error ? err.message : String(err)));
           }
         }
       },
@@ -134,7 +132,7 @@ async function resolve(
     await vscode.window.withProgress(
       {
         location: vscode.ProgressLocation.Notification,
-        title: `gitfix: resolving ${item.conflict.file} (${decision.kind})…`,
+        title: vscode.l10n.t('gitfix: resolving {0} ({1})…', item.conflict.file, decision.kind),
         cancellable: false,
       },
       async () => {
@@ -153,6 +151,6 @@ async function resolve(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     log(`resolve failed: ${msg}`);
-    vscode.window.showErrorMessage(`gitfix: ${msg}`);
+    vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', msg));
   }
 }
