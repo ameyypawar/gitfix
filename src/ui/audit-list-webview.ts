@@ -4,8 +4,9 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { GfixMcpClient } from '../mcp/client';
 import { AuditPanel } from './audit-webview';
-import { escHtml } from './webview-utils';
+import { escHtml, isValidMergeId } from './webview-utils';
 import { envelopeFromStatus } from '../mcp/audit-utils';
+import { log } from '../log';
 
 const exec = promisify(execFile);
 
@@ -50,12 +51,29 @@ export class AuditListPanel {
   ) {
     this.update(refs);
     panel.webview.onDidReceiveMessage(async (msg: { type: string; mergeId?: string; selected?: string[] }) => {
-      if (msg.type === 'open' && msg.mergeId) {
+      // Whitelist known message types; silently ignore anything else.
+      if (msg.type !== 'open' && msg.type !== 'delete' && msg.type !== 'sharePush') {
+        return;
+      }
+      if (msg.type === 'open') {
+        // Guard git ref sink against namespace traversal (#73).
+        if (!msg.mergeId || !isValidMergeId(msg.mergeId)) {
+          log(`audit-list: rejected invalid mergeId for open: ${msg.mergeId}`);
+          return;
+        }
         await this.openOne(msg.mergeId);
-      } else if (msg.type === 'delete' && msg.mergeId) {
+      } else if (msg.type === 'delete') {
+        // Guard git update-ref sink against namespace traversal (#73).
+        if (!msg.mergeId || !isValidMergeId(msg.mergeId)) {
+          log(`audit-list: rejected invalid mergeId for delete: ${msg.mergeId}`);
+          return;
+        }
         await this.deleteOne(msg.mergeId);
-      } else if (msg.type === 'sharePush' && msg.selected?.length) {
-        const cmd = `git push origin ${msg.selected.map((id) => `refs/gitfix/audit/${id}`).join(' ')}`;
+      } else if (msg.type === 'sharePush') {
+        // Filter selected IDs; if none pass validation, bail silently (#73).
+        const safeSelected = (msg.selected ?? []).filter(isValidMergeId);
+        if (!safeSelected.length) { return; }
+        const cmd = `git push origin ${safeSelected.map((id) => `refs/gitfix/audit/${id}`).join(' ')}`;
         await vscode.env.clipboard.writeText(cmd);
         vscode.window.showInformationMessage(vscode.l10n.t('Copied: {0}', cmd));
       }
