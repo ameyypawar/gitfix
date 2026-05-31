@@ -339,6 +339,7 @@
             "develop",
             "release"
           ],
+          "scope": "machine",
           "description": "%settings.protectedBranches.description%"
         },
         "gitfix.telemetry.enabled": {

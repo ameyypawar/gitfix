@@ -26,12 +26,15 @@ export function readSettings(repoPath: string): StrategySettings {
       if (strat === 'mergiraf' || strat === 'text' || strat === 'auto') s.mergeStrategy = strat;
       const rerere = m('allow_rerere', /^allow_rerere\s*=\s*(true|false)/m);
       if (rerere) s.allowRerere = rerere === 'true';
+      // protected_branches is add-only for security: a repo-committed TOML can extend the
+      // protected set from VS Code settings but never narrow it (workspace-trust escalation, #82).
       const branches = m('protected_branches', /^protected_branches\s*=\s*\[([^\]]+)\]/m);
       if (branches) {
-        s.protectedBranches = branches
+        const tomlBranches = branches
           .split(',')
           .map((b) => b.trim().replace(/^"|"$/g, ''))
           .filter(Boolean);
+        s.protectedBranches = [...new Set([...s.protectedBranches, ...tomlBranches])];
       }
     } catch (err) {
       log(`config.toml parse failed: ${err instanceof Error ? err.message : String(err)}`);
