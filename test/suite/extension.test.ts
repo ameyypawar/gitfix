@@ -13,4 +13,15 @@ suite('gitfix extension', () => {
       'gitfix.refresh should be registered after activation',
     );
   });
+
+  test('resolve commands are registered', async () => {
+    const ext = extensions.getExtension('ameyypawar.gitfix');
+    assert.ok(ext, 'extension ameyypawar.gitfix should be present in the test host');
+    await ext!.activate();
+
+    const all = await commands.getCommands(true);
+    for (const id of ['gitfix.resolveOurs', 'gitfix.resolveTheirs', 'gitfix.resolveMergiraf']) {
+      assert.ok(all.includes(id), `${id} should be registered after activation`);
+    }
+  });
 });
