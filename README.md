@@ -110,7 +110,7 @@ The version, installs, and license badges at the top of this file are served by 
 
 ## Known limitations
 
-- **Git worktrees are not supported for merge detection.** Merge state detection checks for `.git/MERGE_HEAD` inside a `.git` directory. In a git worktree, `.git` is a file (pointing to the common `.git` directory), so the MERGE_HEAD file is not at the expected path and the extension will not detect an active merge. Support for worktrees is planned for a future release.
+- **Git worktrees and one-level-nested repos are detected.** Merge state detection follows the `gitdir:` pointer when `.git` is a file (worktree), resolves the real gitdir, and probes `MERGE_HEAD` there. It also walks one level of immediate subdirectories per workspace folder (skipping `node_modules` and dotdirs) to detect merges in monorepo sub-repos.
 
 ## How it works
 

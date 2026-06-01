@@ -94,7 +94,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // 3a. First-run telemetry consent toast (one-shot via globalState).
   const CONSENT_KEY = 'gitfix.telemetry.consentShown';
   if (!context.globalState.get(CONSENT_KEY)) {
-    context.globalState.update(CONSENT_KEY, true);
+    void context.globalState.update(CONSENT_KEY, true);
     const enableLbl = vscode.l10n.t('Enable');
     vscode.window.showInformationMessage(
       vscode.l10n.t('gitfix can send anonymized usage events to help us improve. Off by default. You can opt in any time in Settings.'),
