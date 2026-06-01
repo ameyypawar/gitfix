@@ -1,6 +1,15 @@
 import * as vscode from 'vscode';
 
 /**
+ * Regex that matches a git conflict start marker at the beginning of a line.
+ * Handles 6-, 7-, and 8-character forms, with an optional trailing label.
+ *
+ * IMPORTANT: this regex has the `/g` flag and is shared across calls.
+ * Always reset `CONFLICT_START_RE.lastIndex = 0` before entering the exec loop.
+ */
+export const CONFLICT_START_RE = /^(<{6,8})( .*)?$/gm;
+
+/**
  * Lazy-rendered CodeLens above every git conflict marker block.
  *
  * Triggers on save / open of any text document inside a workspace folder that
@@ -65,9 +74,10 @@ export class ConflictCodeLensProvider implements vscode.CodeLensProvider {
     // Match canonical 7-char markers AND the rare Git Brand variant (`<<<<<<` 6+).
     // We anchor to start-of-line to avoid matching inline tokens in docs.
     // Note: we tolerate trailing label text (`<<<<<<< HEAD`, `<<<<<<< theirs`).
-    const startRe = /^(<{6,8})( .*)?$/gm;
+    // Reset lastIndex: CONFLICT_START_RE is a shared module-level regex with /g flag.
+    CONFLICT_START_RE.lastIndex = 0;
     let match: RegExpExecArray | null;
-    while ((match = startRe.exec(text)) !== null) {
+    while ((match = CONFLICT_START_RE.exec(text)) !== null) {
       if (token.isCancellationRequested) return lenses;
       const lineIndex = document.positionAt(match.index).line;
       const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
