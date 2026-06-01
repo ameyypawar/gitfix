@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
+import { McpError } from '@modelcontextprotocol/sdk/types.js';
 import { GfixMcpClient } from '../mcp/client';
 import { ConflictTreeProvider } from '../ui/conflict-tree';
 import type { MergeState } from '../git/detect';
@@ -68,7 +69,7 @@ export function registerCodeLensCommands(
     return getState().repoPath;
   }
 
-  const handler = (kind: ResolutionDecision['kind']) =>
+  const handler = (kind: 'ours' | 'theirs' | 'mergiraf') =>
     async (uri: vscode.Uri, lineIndex: number) => {
       const client = getClient();
       if (!client) {
@@ -86,8 +87,7 @@ export function registerCodeLensCommands(
       if (!conflict) {
         return;
       }
-      const decision: ResolutionDecision =
-        kind === 'manual' ? { kind: 'manual', text: '' } : { kind };
+      const decision: ResolutionDecision = { kind };
       try {
         await client.conflictResolve({
           repo_path: repoPath,
@@ -118,6 +118,7 @@ export function registerCodeLensCommands(
       if (!client || !repoPath || !mergeId) return;
       const conflict = await pickConflict(uri, lineIndex, { ...state, repoPath });
       if (!conflict) return;
+      const ac = new AbortController();
       try {
         await vscode.window.withProgress(
           {
@@ -127,28 +128,41 @@ export function registerCodeLensCommands(
             cancellable: true,
           },
           async (_progress, token) => {
-            const got = await client.conflictGet({
-              repo_path: repoPath,
-              merge_id: mergeId,
-              conflict_id: conflict.conflict_id,
-              include_ai_suggestion: true,
-            });
-            // Respect cancellation after the potentially slow conflict_get call.
-            if (token.isCancellationRequested) return;
-            if (!got.ai_suggestion) {
-              throw new Error(got.ai_suggestion_unavailable_reason ?? 'no suggestion produced');
+            const sub = token.onCancellationRequested(() => ac.abort());
+            try {
+              const got = await client.conflictGet({
+                repo_path: repoPath,
+                merge_id: mergeId,
+                conflict_id: conflict.conflict_id,
+                include_ai_suggestion: true,
+                signal: ac.signal,
+              });
+              // Respect cancellation after the potentially slow conflict_get call.
+              if (token.isCancellationRequested) return;
+              if (!got.ai_suggestion) {
+                throw new Error(got.ai_suggestion_unavailable_reason ?? 'no suggestion produced');
+              }
+              await client.conflictResolve({
+                repo_path: repoPath,
+                merge_id: mergeId,
+                conflict_id: conflict.conflict_id,
+                resolution: { kind: 'ai-suggestion' },
+                signal: ac.signal,
+              });
+              if (token.isCancellationRequested) return;
+              await tree.refresh(repoPath);
+            } finally {
+              sub.dispose();
             }
-            await client.conflictResolve({
-              repo_path: repoPath,
-              merge_id: mergeId,
-              conflict_id: conflict.conflict_id,
-              resolution: { kind: 'ai-suggestion' },
-            });
-            if (token.isCancellationRequested) return;
-            await tree.refresh(repoPath);
           },
         );
       } catch (err) {
+        // Swallow abort silently — user cancelled, no error toast needed.
+        // The MCP SDK wraps signal abort as McpError(-32001) when signal.reason
+        // is undefined (the default for ac.abort() with no argument).
+        if (err instanceof McpError && err.code === -32001 && ac.signal.aborted) {
+          return;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         log(`codelens resolveWithAi failed: ${msg}`);
         vscode.window.showErrorMessage(vscode.l10n.t('gitfix: {0}', msg));

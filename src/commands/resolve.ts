@@ -93,7 +93,7 @@ export function registerResolveCommands(
 async function resolve(
   getClient: () => GfixMcpClient | undefined,
   tree: ConflictTreeProvider,
-  getState: () => MergeState,
+  _getState: () => MergeState,
   item: ConflictItem | undefined,
   decision: ResolutionDecision,
 ): Promise<void> {
@@ -111,22 +111,18 @@ async function resolve(
     return;
   }
 
-  // Multi-repo correctness (#28): for tree-item-invoked resolve commands, the
-  // ConflictItem carries its own repoPath — use that to look up the correct
-  // merge_id rather than defaulting to tree.mergeId (first-repo-wins).
+  // Multi-repo correctness (#28 / #90): for tree-item-invoked resolve commands,
+  // the ConflictItem carries its own repoPath — use that to look up the correct
+  // merge_id. No silent fallback to a different repo's merge_id.
   const repoPath = item.repoPath;
   const mergeId = tree.mergeIdForRepo(repoPath);
   if (!mergeId) {
-    // Fallback: check legacy single-repo state
-    const state = getState();
-    if (!state.hasMerge || !state.repoPath || !tree.mergeId) {
-      vscode.window.showErrorMessage(vscode.l10n.t('gitfix: no active merge.'));
-      return;
-    }
+    vscode.window.showWarningMessage(vscode.l10n.t('gitfix: no active merge.'));
+    return;
   }
 
-  const effectiveMergeId = mergeId ?? tree.mergeId!;
-  const effectiveRepoPath = mergeId ? repoPath : getState().repoPath!;
+  const effectiveMergeId = mergeId;
+  const effectiveRepoPath = repoPath;
 
   try {
     await vscode.window.withProgress(

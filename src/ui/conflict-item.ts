@@ -41,7 +41,7 @@ export class ResolvedGroupItem extends vscode.TreeItem {
 }
 
 export class ResolvedItem extends vscode.TreeItem {
-  constructor(public readonly entry: ResolvedEntry) {
+  constructor(public readonly entry: ResolvedEntry, repoPath: string, showRepo: boolean) {
     super(entry.file, vscode.TreeItemCollapsibleState.None);
     this.contextValue = 'resolvedFile';
     this.iconPath = new vscode.ThemeIcon('check');
@@ -49,7 +49,8 @@ export class ResolvedItem extends vscode.TreeItem {
     this.tooltip =
       `via: ${entry.via}\n` +
       `ours (${entry.ours_source}): ${entry.ours_oid.slice(0, 8)}\n` +
-      `theirs (${entry.theirs_source}): ${entry.theirs_oid.slice(0, 8)}`;
+      `theirs (${entry.theirs_source}): ${entry.theirs_oid.slice(0, 8)}` +
+      (showRepo ? `\nrepo: ${path.basename(repoPath)}` : '');
   }
 }
 
