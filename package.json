@@ -402,6 +402,18 @@
       }
     ]
   },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "restrictedConfigurations": [
+        "gitfix.gfixPath",
+        "gitfix.protectedBranches",
+        "gitfix.mergeStrategy",
+        "gitfix.allowRerere",
+        "gitfix.aiProvider"
+      ]
+    }
+  },
   "scripts": {
     "vscode:prepublish": "npm run package",
     "compile": "node esbuild.config.js",
