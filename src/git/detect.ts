@@ -69,18 +69,21 @@ export class MergeStateDetector implements vscode.Disposable {
 
   private async recompute(): Promise<void> {
     const next = await scanWorkspaceFolders();
-    // Compare by size and key set to detect changes.
+    // Compare by size and key set to detect changes (symmetric: new keys added
+    // OR old keys removed — catches same-size rotations like close-A + open-B).
     const changed =
       next.anyActive !== this.last.anyActive ||
       next.active.size !== this.last.active.size ||
-      [...next.active.keys()].some((k) => !this.last.active.has(k));
+      [...next.active.keys()].some((k) => !this.last.active.has(k)) ||
+      [...this.last.active.keys()].some((k) => !next.active.has(k));
     this.last = next;
     if (changed) {
       await this.listener(next);
     }
   }
 
-  dispose(): void {
+  // async so the deactivate() await in extension.ts is type-honest (mirrors mcpClient?.stop()).
+  async dispose(): Promise<void> {
     this.fsWatcher?.dispose();
     for (const d of this.gitDisposables) d.dispose();
     this.gitDisposables = [];
