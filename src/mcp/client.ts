@@ -40,8 +40,9 @@ export class GfixMcpClient {
     opts: { enableByok: boolean; onSubprocessDied?: () => void; allowedRoots?: string[] } = { enableByok: false },
   ): Promise<void> {
     this.dead = false;
-    const baseEnv = process.env as Record<string, string>;
-    const env: Record<string, string> = { ...baseEnv };
+    const env = Object.fromEntries(
+      Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
+    );
     if (opts.enableByok) {
       env['GITFIX_BYOK'] = '1';
     }
@@ -151,12 +152,14 @@ export class GfixMcpClient {
     merge_id: string;
     conflict_id: string;
     include_ai_suggestion?: boolean;
+    signal?: AbortSignal;
   }): Promise<ConflictGetResponse> {
     // 30 s: may invoke AI for suggestion caching.
+    const { signal, ...toolArgs } = args;
     const res = await this.requireClient().callTool({
       name: 'gitfix_conflict_get',
-      arguments: args,
-    }, CallToolResultSchema, { timeout: 30_000 });
+      arguments: toolArgs,
+    }, CallToolResultSchema, { timeout: 30_000, signal });
     return unwrapStructuredContent<ConflictGetResponse>(res as CallToolResult, 'gitfix_conflict_get');
   }
 
@@ -165,12 +168,14 @@ export class GfixMcpClient {
     merge_id: string;
     conflict_id: string;
     resolution: ResolutionDecision;
+    signal?: AbortSignal;
   }): Promise<ConflictResolveResponse> {
     // 30 s: may invoke AI if resolution kind is 'ai-suggestion'.
+    const { signal, ...toolArgs } = args;
     const res = await this.requireClient().callTool({
       name: 'gitfix_conflict_resolve',
-      arguments: args,
-    }, CallToolResultSchema, { timeout: 30_000 });
+      arguments: toolArgs,
+    }, CallToolResultSchema, { timeout: 30_000, signal });
     return unwrapStructuredContent<ConflictResolveResponse>(res as CallToolResult, 'gitfix_conflict_resolve');
   }
 

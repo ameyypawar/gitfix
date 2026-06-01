@@ -52,13 +52,8 @@ export async function installSamplingHost(client: Client): Promise<{
   modelLabel?: string;
 }> {
   // Per-session request counter for the budget warning (#23).
-  // Reads gitfix.ai.budgetWarningAt at handler-install time; changes take
-  // effect on the next window reload (consistent with other per-session state).
   let requestCount = 0;
   let budgetWarningFired = false;
-  const budgetWarningAt = vscode.workspace
-    .getConfiguration('gitfix')
-    .get<number>('ai.budgetWarningAt', 8);
   // Report initial availability for CodeLens / info-toast purposes, but do
   // NOT gate handler installation on this check (fix #5).
   let initialModels: vscode.LanguageModelChat[] = [];
@@ -122,6 +117,10 @@ export async function installSamplingHost(client: Client): Promise<{
     // Increment per-session counter and emit a one-time warning when the
     // configured threshold is reached (#23). Soft-continue: the request is
     // NOT blocked; the warning is purely informational.
+    // Read live so changes to gitfix.ai.budgetWarningAt take effect immediately.
+    const budgetWarningAt = vscode.workspace
+      .getConfiguration('gitfix')
+      .get<number>('ai.budgetWarningAt', 8);
     requestCount += 1;
     if (!budgetWarningFired && budgetWarningAt > 0 && requestCount >= budgetWarningAt) {
       budgetWarningFired = true;

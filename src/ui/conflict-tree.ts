@@ -159,7 +159,7 @@ export class ConflictTreeProvider implements vscode.TreeDataProvider<Node> {
       return children;
     }
     if (element instanceof ResolvedGroupItem) {
-      return element.resolved.map((r) => new ResolvedItem(r));
+      return element.resolved.map((r) => new ResolvedItem(r, element.repoPath, this.plans.size > 1));
     }
     return [];
   }
