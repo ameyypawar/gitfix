@@ -1,11 +1,9 @@
 import * as assert from 'assert';
+import { CONFLICT_START_RE } from '../../src/ui/codelens-provider';
 
 // Unit tests for the CodeLens conflict marker regex.
 // We extract and test the regex independently of the vscode host so these run
 // fast in the Mocha test suite without needing a real document.
-
-/** Mirrors the regex used in ConflictCodeLensProvider.provideCodeLenses. */
-const CONFLICT_START_RE = /^(<{6,8})( .*)?$/gm;
 
 function findMarkerLines(text: string): number[] {
   const results: number[] = [];

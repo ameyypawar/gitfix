@@ -54,6 +54,43 @@ suite('telemetry — sanitize + send behavior', () => {
     assert.strictEqual(result.safe, 'ok');
   });
 
+  test('sanitize drops values starting with sk-ant- (Anthropic API key prefix)', () => {
+    const result = sanitize({ key: 'sk-ant-abc123' });
+    assert.ok(!('key' in result), 'sk-ant- prefixed value should be dropped');
+  });
+
+  test('sanitize drops values starting with sk- (generic secret prefix)', () => {
+    const result = sanitize({ key: 'sk-abc123' });
+    assert.ok(!('key' in result), 'sk- prefixed value should be dropped');
+  });
+
+  test('sanitize drops values starting with ghp_ (GitHub PAT prefix)', () => {
+    const result = sanitize({ key: 'ghp_abc' });
+    assert.ok(!('key' in result), 'ghp_ prefixed value should be dropped');
+  });
+
+  test('sanitize drops values starting with github_pat_ prefix', () => {
+    const result = sanitize({ key: 'github_pat_xxx' });
+    assert.ok(!('key' in result), 'github_pat_ prefixed value should be dropped');
+  });
+
+  test('sanitize drops value with U+2215 DIVISION SLASH confusable (non-ASCII reject)', () => {
+    // U+2215 is not folded by NFKC — the non-ASCII reject catches it.
+    const result = sanitize({ key: 'a∕b' });
+    assert.ok(!('key' in result), 'U+2215 division slash confusable should be dropped');
+  });
+
+  test('sanitize drops value with U+FF0F FULLWIDTH SOLIDUS confusable (non-ASCII reject)', () => {
+    const result = sanitize({ key: 'a／b' });
+    assert.ok(!('key' in result), 'U+FF0F fullwidth solidus confusable should be dropped');
+  });
+
+  test('sanitize passes safe short values unchanged (regression: passthrough still green)', () => {
+    const input = { strategy: 'ai', via: 'theirs', lmAvailable: 'true' };
+    const result = sanitize(input);
+    assert.deepStrictEqual(result, input);
+  });
+
   test('telemetry disabled by default — send is no-op (no exception thrown)', () => {
     // We cannot easily check the VS Code configuration in a unit test without
     // a real workspace, but we can verify the module loads cleanly and the

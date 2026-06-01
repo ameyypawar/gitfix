@@ -11,16 +11,14 @@
  * with adversarial mergeId values.
  */
 import * as assert from 'assert';
+import { escHtml } from '../../src/ui/webview-utils';
 
 // We test the render function by extracting it into a testable form.
 // Since the function is not exported, we reproduce the relevant logic inline
 // and test the same escaping invariants. The production render() uses the
 // same `esc()` function and data-attribute pattern.
 
-const esc = (s: string): string =>
-  s.replace(/[&<>"']/g, (c: string) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
-  );
+const esc = escHtml;
 
 function renderRow(mergeId: string): string {
   return `<button class="action-btn" data-action="open" data-id="${esc(mergeId)}">View</button>` +
