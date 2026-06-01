@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { GfixMcpClient } from './mcp/client';
 import { ConflictTreeProvider } from './ui/conflict-tree';
 import { StatusBar } from './ui/status-bar';
@@ -21,15 +23,14 @@ import { log, showOutputChannel, getLogChannel } from './log';
 /** Minimum gfix CLI version required for full functionality. */
 const REQUIRED_GFIX_MIN = '0.1.0-alpha.3';
 
+const runFileAsync = promisify(execFile);
+
 /** Check the installed gfix binary version against the floor. */
 async function gfixVersionOk(gfixPath: string): Promise<{ ok: boolean; actual: string }> {
   try {
-    // Use execFile instead of exec to avoid shell injection: gfixPath is
-    // passed as the executable directly, never interpolated into a shell string.
-    const { execFile } = await import('node:child_process');
-    const { promisify } = await import('node:util');
-    const runFile = promisify(execFile);
-    const { stdout } = await runFile(gfixPath, ['--version'], { timeout: 5000 });
+    // gfixPath is scope:machine (not workspace-settable) — that scope is the security boundary.
+    // execFile + arg array (never a shell string) prevents injection.
+    const { stdout } = await runFileAsync(gfixPath, ['--version'], { timeout: 5000 });
     const m = stdout.match(/(\d+\.\d+\.\d+(?:-[\w.]+)?)/);
     const actual = m?.[1] ?? 'unknown';
     return { ok: semverGte(actual, REQUIRED_GFIX_MIN), actual };
@@ -39,6 +40,7 @@ async function gfixVersionOk(gfixPath: string): Promise<{ ok: boolean; actual: s
 }
 
 let mcpClient: GfixMcpClient | undefined;
+let mcpWired = false;
 let detector: MergeStateDetector | undefined;
 let treeProvider: ConflictTreeProvider | undefined;
 let statusBar: StatusBar | undefined;
@@ -137,99 +139,116 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
   );
 
-  // 5. Boot MCP client (async; failure is non-fatal — commands will show an error at
-  // invoke time instead of leaving the extension entirely unregistered).
-  // Check BYOK before starting so we can pass enableByok to the subprocess.
+  // 5. Boot MCP client — gated on workspace trust to prevent RCE via untrusted config (#103).
+  // Nested function captures all activation-time closures (config, treeProvider,
+  // codeLensProvider, telemetry). mcpWired guards against double-spawn on re-grant.
   const byokStatus = checkBYOK();
-  try {
-    mcpClient = new GfixMcpClient(gfixPath, context.extension.packageJSON.version as string);
-    await mcpClient.start({
-      enableByok: byokStatus.configured,
-      allowedRoots: getAllowedRoots(),
-      // #57: on unexpected subprocess death, surface a toast so the user knows
-      // the session is broken and can recover without hunting for silent errors.
-      onSubprocessDied: () => {
-        mcpClient = undefined;
-        const reloadWindowLbl = vscode.l10n.t('Reload Window');
-        void vscode.window
-          .showErrorMessage(
-            vscode.l10n.t('gitfix: the gfix subprocess exited unexpectedly. Reload the window to reconnect.'),
-            reloadWindowLbl,
-          )
-          .then((choice) => {
-            if (choice === reloadWindowLbl) {
-              vscode.commands.executeCommand('workbench.action.reloadWindow');
-            }
-          });
-      },
-    });
-    log(`MCP client connected to ${gfixPath}`);
 
-    // Check gfix CLI version floor (non-blocking warning only).
-    const { ok: versionOk, actual: actualVersion } = await gfixVersionOk(gfixPath);
-    if (!versionOk && actualVersion !== 'not-found') {
-      const updateGfixLbl = vscode.l10n.t('Update gfix');
-      void vscode.window.showWarningMessage(
-        vscode.l10n.t(
-          'gitfix needs gfix {0} or newer (you have {1}). Update for best results.',
-          REQUIRED_GFIX_MIN,
-          actualVersion,
-        ),
-        updateGfixLbl,
-      ).then((c) => {
-        if (c === updateGfixLbl) {
-          vscode.env.openExternal(vscode.Uri.parse('https://gfix.space/install'));
-        }
+  async function startMcpAndWire(): Promise<void> {
+    if (mcpWired) { return; }
+    try {
+      mcpClient = new GfixMcpClient(gfixPath, context.extension.packageJSON.version as string);
+      await mcpClient.start({
+        enableByok: byokStatus.configured,
+        allowedRoots: getAllowedRoots(),
+        // #57: on unexpected subprocess death, surface a toast so the user knows
+        // the session is broken and can recover without hunting for silent errors.
+        onSubprocessDied: () => {
+          mcpClient = undefined;
+          const reloadWindowLbl = vscode.l10n.t('Reload Window');
+          void vscode.window
+            .showErrorMessage(
+              vscode.l10n.t('gitfix: the gfix subprocess exited unexpectedly. Reload the window to reconnect.'),
+              reloadWindowLbl,
+            )
+            .then((choice) => {
+              if (choice === reloadWindowLbl) {
+                vscode.commands.executeCommand('workbench.action.reloadWindow');
+              }
+            });
+        },
       });
-    }
-    treeProvider.setClient(mcpClient);
+      // Mark wired only on the success path — a failed start leaves mcpWired=false
+      // so a later trust-grant or reload can retry.
+      mcpWired = true;
+      log(`MCP client connected to ${gfixPath}`);
 
-    // 4a. Install vscode.lm sampling host and surface AI availability to CodeLens.
-    const provider = config.get<'host' | 'byok' | 'none'>('aiProvider', 'host');
-    let aiAvailable = false;
-    if (provider !== 'none') {
-      const raw = mcpClient.getRawClient();
-      if (raw && provider === 'host') {
-        const host = await installSamplingHost(raw);
-        aiAvailable = host.available;
-        if (!host.available && !byokStatus.configured) {
-          const configureLbl = vscode.l10n.t('Configure');
-          void vscode.window.showInformationMessage(
-            vscode.l10n.t('gitfix: no AI provider available. Configure one to enable "Resolve with AI".'),
-            configureLbl,
-          ).then((c) => {
-            if (c === configureLbl) vscode.commands.executeCommand('gitfix.configureAiProvider');
-          });
-        } else if (!host.available && byokStatus.configured) {
-          aiAvailable = true; // gfix subprocess handles BYOK transparently
-        }
-      } else if (provider === 'byok') {
-        aiAvailable = byokStatus.configured;
+      // Check gfix CLI version floor (non-blocking warning only).
+      const { ok: versionOk, actual: actualVersion } = await gfixVersionOk(gfixPath);
+      if (!versionOk && actualVersion !== 'not-found') {
+        const updateGfixLbl = vscode.l10n.t('Update gfix');
+        void vscode.window.showWarningMessage(
+          vscode.l10n.t(
+            'gitfix needs gfix {0} or newer (you have {1}). Update for best results.',
+            REQUIRED_GFIX_MIN,
+            actualVersion,
+          ),
+          updateGfixLbl,
+        ).then((c) => {
+          if (c === updateGfixLbl) {
+            vscode.env.openExternal(vscode.Uri.parse('https://gfix.space/install'));
+          }
+        });
       }
-    }
-    codeLensProvider.setAiAvailable(aiAvailable);
-    telemetry.send('extension.activated', {
-      lmAvailable: aiAvailable ? 'true' : 'false',
-      byokConfigured: byokStatus.configured ? 'true' : 'false',
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log(`MCP startup failed: ${msg}`);
-    telemetry.send('extension.error', { errorClass: (err as Error)?.constructor?.name ?? 'Error', command: 'activate' });
-    vscode.window
-      .showErrorMessage(
-        vscode.l10n.t('gitfix: failed to start gfix MCP server ({0}). Install gfix or set gitfix.gfixPath.', msg),
-        'Open install guide',
-        'Show logs',
-      )
-      .then((choice) => {
-        if (choice === 'Open install guide') {
-          vscode.env.openExternal(vscode.Uri.parse('https://gfix.space'));
-        } else if (choice === 'Show logs') {
-          showOutputChannel();
+      treeProvider!.setClient(mcpClient);
+
+      // 4a. Install vscode.lm sampling host and surface AI availability to CodeLens.
+      const provider = config.get<'host' | 'byok' | 'none'>('aiProvider', 'host');
+      let aiAvailable = false;
+      if (provider !== 'none') {
+        const raw = mcpClient.getRawClient();
+        if (raw && provider === 'host') {
+          const host = await installSamplingHost(raw);
+          aiAvailable = host.available;
+          if (!host.available && !byokStatus.configured) {
+            const configureLbl = vscode.l10n.t('Configure');
+            void vscode.window.showInformationMessage(
+              vscode.l10n.t('gitfix: no AI provider available. Configure one to enable "Resolve with AI".'),
+              configureLbl,
+            ).then((c) => {
+              if (c === configureLbl) vscode.commands.executeCommand('gitfix.configureAiProvider');
+            });
+          } else if (!host.available && byokStatus.configured) {
+            aiAvailable = true; // gfix subprocess handles BYOK transparently
+          }
+        } else if (provider === 'byok') {
+          aiAvailable = byokStatus.configured;
         }
+      }
+      codeLensProvider.setAiAvailable(aiAvailable);
+      telemetry.send('extension.activated', {
+        lmAvailable: aiAvailable ? 'true' : 'false',
+        byokConfigured: byokStatus.configured ? 'true' : 'false',
       });
-    // DO NOT return — the extension stays activated with commands available.
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`MCP startup failed: ${msg}`);
+      telemetry.send('extension.error', { errorClass: (err as Error)?.constructor?.name ?? 'Error', command: 'activate' });
+      vscode.window
+        .showErrorMessage(
+          vscode.l10n.t('gitfix: failed to start gfix MCP server ({0}). Install gfix or set gitfix.gfixPath.', msg),
+          'Open install guide',
+          'Show logs',
+        )
+        .then((choice) => {
+          if (choice === 'Open install guide') {
+            vscode.env.openExternal(vscode.Uri.parse('https://gfix.space'));
+          } else if (choice === 'Show logs') {
+            showOutputChannel();
+          }
+        });
+      // DO NOT return — the extension stays activated with commands available.
+    }
+  }
+
+  if (vscode.workspace.isTrusted) {
+    await startMcpAndWire();
+  } else {
+    codeLensProvider.setAiAvailable(false);
+    log('workspace untrusted — gfix spawn deferred until trust is granted');
+    context.subscriptions.push(
+      vscode.workspace.onDidGrantWorkspaceTrust(() => { void startMcpAndWire(); }),
+    );
   }
 
   // 6. Detect merge state and refresh tree on changes.
